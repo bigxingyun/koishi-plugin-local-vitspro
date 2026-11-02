@@ -8,6 +8,7 @@ import {
     SayOptions,
     Source,
     SpeakerBase,
+    AggregateMode,
     SynthesizeOptions,
     VoiceEntry
 } from '../types'
@@ -424,7 +425,13 @@ export class Pipeline {
             options.speaker_id,
             undefined
         )
-        return this.synthesizeNormalized(normalized.text, source, voice, session)
+        return this.synthesizeNormalized(
+            normalized.text,
+            source,
+            voice,
+            session,
+            options.aggregate
+        )
     }
 
     /** 供指令 / chatluna 工具调用：文本直接合成，不经过 speaker_id 映射 */
@@ -439,7 +446,8 @@ export class Pipeline {
             normalized.text,
             source,
             voice,
-            options.session
+            options.session,
+            options.aggregate
         )
     }
 
@@ -478,7 +486,8 @@ export class Pipeline {
         text: string,
         source: Source,
         voice: VoiceEntry | undefined,
-        session: any
+        session: any,
+        aggregateOverride?: AggregateMode
     ): Promise<ElementLike> {
         const chars = speakableLength(text)
         const empty = isEffectivelyEmpty(text)
@@ -546,7 +555,7 @@ export class Pipeline {
             return this.degrade(text, source, 'ALL_SEGMENTS_FAILED', session, this.backendKey(voice.backend))
         }
 
-        return this.deliver(ok, session)
+        return this.deliver(ok, session, aggregateOverride)
     }
 
     private splitOptions(): SplitOptions {
@@ -619,7 +628,11 @@ export class Pipeline {
         return this.deps.toElement ? this.deps.toElement(element) : element
     }
 
-    private deliver(results: AudioResult[], session: any): ElementLike {
+    private deliver(
+        results: AudioResult[],
+        session: any,
+        aggregateOverride?: AggregateMode
+    ): ElementLike {
         const sentOnly = results.filter((item) => item.sent)
         if (sentOnly.length === results.length) {
             return textElement('')
@@ -627,7 +640,7 @@ export class Pipeline {
 
         const buffers = results.map((item) => item.data)
         const mime = results[0].mime
-        const aggregate = this.deps.config.aggregate.type
+        const aggregate = aggregateOverride ?? this.deps.config.aggregate.type
 
         if (aggregate !== 'multi' && /wav|wave/i.test(mime)) {
             const merged = mergeWavs(buffers)
@@ -996,6 +1009,8 @@ function median(values: number[]): number {
         ? Math.round((sorted[mid - 1] + sorted[mid]) / 2)
         : Math.round(sorted[mid])
 }
+
+
 
 
 

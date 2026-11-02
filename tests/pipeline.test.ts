@@ -182,6 +182,50 @@ describe('Pipeline.say', () => {
         expect(sent.every((item) => item.type === 'audio')).toBe(true)
     })
 
+    it('调用级 aggregate=multi 覆盖配置（强制发多条）', async () => {
+        const { pipeline } = setup({ split: splitOptions(20) })
+        const sent: ElementLike[] = []
+        const session = {
+            send: async (element: ElementLike) => {
+                sent.push(element)
+            }
+        }
+
+        const element = await pipeline.synthesize(
+            sentenceOfLength(45),
+            { session, aggregate: 'multi' }
+        )
+
+        expect(element.type).toBe('audio')
+        expect(sent).toHaveLength(2)
+    })
+
+    it('调用级 aggregate=concat 覆盖配置（强制拼接）', async () => {
+        const { pipeline } = setup({
+            split: splitOptions(20),
+            aggregate: {
+                type: 'multi',
+                maxAudioSeconds: 55,
+                partialPolicy: 'keep-ok'
+            }
+        })
+        const sent: ElementLike[] = []
+        const session = {
+            send: async (element: ElementLike) => {
+                sent.push(element)
+            }
+        }
+
+        const element = await pipeline.synthesize(
+            sentenceOfLength(45),
+            { session, aggregate: 'concat' }
+        )
+
+        expect(element.type).toBe('audio')
+        expect(sent).toHaveLength(0)
+        expect(String(element.attrs?.src).length).toBeGreaterThan(0)
+    })
+
     it('降级提示按间隔节流', async () => {
         const failing = () => {
             const error = new Error('connect refused') as Error & {

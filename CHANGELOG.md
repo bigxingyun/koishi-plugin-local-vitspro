@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.13 (2026-11-02)
+
+- 新增指令级选择：`vitspro <文本> -m` 长文本切分后**分多条语音发送**；`-c` 强制**拼成一条长语音**。不传时仍由 `aggregate.type` 决定。
+- GPT-SoVITS 讲者配置说明更明确：接口没有列模型能力，需手动填 `gpt_weights` / `sovits_weights`（填 WebUI 下拉里的相对路径）、`ref_audio_path`（3~10 秒）和 `prompt_text`（v3/v4/v5 必填，不支持空参考文本）。
+- `aggregate.type` 描述改成直白说明：auto / concat / multi 分别是什么。
 ## 0.1.12 (2026-11-02)
 
 - 修复 `vits_say` 工具在 chatluna 后加载时**静默不注册**：`registerChatlunaTool` 改为 `ctx.inject(['chatluna'])`，不再受插件加载顺序影响。
@@ -101,6 +106,7 @@
 - 未对真实 TTS 后端联调（开发环境无后端），请求格式按上游实现与各后端 API 对齐；
 - 不支持 gradio 后端；
 - 不支持自动翻译。
+
 
 
 

@@ -169,13 +169,20 @@ export interface SayOptions {
     session?: any
     /** 内部覆盖来源识别结果 */
     source?: Source
+    /** 覆盖多条/拼接的发送方式 */
+    aggregate?: AggregateMode
 }
 
 export interface SynthesizeOptions {
     speaker?: string
     session?: any
     source?: Source
+    /** 覆盖配置里的 aggregate.type（指令 -m / -c 用） */
+    aggregate?: AggregateMode
 }
+
+/** 多段音频的发送方式：auto=能拼就拼；concat=强制拼接；multi=发多条 */
+export type AggregateMode = 'auto' | 'concat' | 'multi'
 
 /** 极简 http 客户端契约：koishi ctx.http 兼容，测试可注入 stub */
 export interface HttpClient {
@@ -224,4 +231,5 @@ export interface BreakerConfig {
     cooldown: number
     maxCooldown: number
 }
+
 

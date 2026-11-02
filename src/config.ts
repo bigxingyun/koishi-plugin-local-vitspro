@@ -47,15 +47,21 @@ const VitsSimpleApiSpeaker = Schema.object({
 
 const GptSovits2Speaker = Schema.object({
     ...BaseSpeaker,
-    gpt_weights: Schema.string().description('GPT 底模路径（服务端），不填则不切换'),
-    sovits_weights: Schema.string().description('SoVITS 底模路径（服务端），不填则不切换'),
+    gpt_weights: Schema.string().description(
+        'GPT 模型路径（服务端相对路径，如 GPT_weights_v4/银狼-e5.ckpt）；接口不能列模型，手动填 WebUI 下拉里的值'
+    ),
+    sovits_weights: Schema.string().description(
+        'SoVITS 模型路径（服务端相对路径，如 SoVITS_weights_v4/银狼_e1_s199_l32.pth）'
+    ),
     ref_audio_path: Schema.string().description(
-        '参考音频路径（服务端；v2 必填，v1 即 refer_wav_path）'
+        '参考音频（服务端路径，3~10 秒）；v2/v3/v4/v5 必填，v1 即 refer_wav_path'
     ),
     aux_ref_audio_paths: Schema.array(Schema.string())
         .default([])
         .description('辅助参考音频路径（v1 即 inp_refs）'),
-    prompt_text: Schema.string().description('参考文本'),
+    prompt_text: Schema.string().description(
+        '参考音频对应的原文；v3/v4/v5 必填（不支持空参考文本）'
+    ),
     prompt_lang: Schema.string().default('zh').description('参考文本语言'),
     text_lang: Schema.string().description('合成语言，不填则跟随 key 后缀 / 默认 zh'),
     languages: Schema.array(Schema.string())
@@ -351,7 +357,9 @@ export const Config: Schema<Config> = Schema.intersect([
         aggregate: Schema.object({
             type: Schema.union(['auto', 'concat', 'multi'])
                 .default('auto')
-                .description('auto=能拼就拼，否则分多条发'),
+                .description(
+                    'auto=能拼就拼；concat=总是拼成一条长语音；multi=切开后分多条发送（指令 -m / -c 可临时覆盖）'
+                ),
             maxAudioSeconds: Schema.number()
                 .min(1)
                 .default(55)
@@ -441,6 +449,7 @@ export const Config: Schema<Config> = Schema.intersect([
 ]) as unknown as Schema<Config>
 
 export const name = 'local-vitspro'
+
 
 
 
