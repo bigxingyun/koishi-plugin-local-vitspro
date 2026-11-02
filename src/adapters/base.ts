@@ -24,6 +24,23 @@ export interface SynthesizeRequest {
     session?: any
 }
 
+/** `tts probe` 的输出：只做一次真实的讲者探测，不触发合成 */
+export interface SpeakerProbe {
+    label: string
+    type: Backend['type']
+    /** 该后端是否真的发了请求（autoPullSpeaker=false 时为 false） */
+    requested: boolean
+    url?: string
+    ok: boolean
+    status?: number
+    ms: number
+    count: number
+    sample?: string[]
+    error?: string
+    /** 针对常见配置错误的提示 */
+    hint?: string
+}
+
 export abstract class VitsAdapter {
     abstract readonly type: Backend['type']
 
@@ -37,6 +54,51 @@ export abstract class VitsAdapter {
     /** 自动拉取讲者（默认返回配置里写死的） */
     async getSpeakers(backend: Backend): Promise<SpeakerBase[]> {
         return backend.speakers ?? []
+    }
+
+    /** 诊断：跑一次讲者拉取，把 URL / 状态 / 耗时 / 错误都带回来 */
+    async probeSpeakers(backend: Backend): Promise<SpeakerProbe> {
+        const started = Date.now()
+        const label = backend.label ?? backend.type
+
+        if (this.autoPull && backend.autoPullSpeaker === false) {
+            return {
+                label,
+                type: backend.type,
+                requested: false,
+                ok: false,
+                ms: 0,
+                count: 0,
+                hint: 'autoPullSpeaker=false，不会请求后端；请手动配置 speakers'
+            }
+        }
+
+        try {
+            const speakers = await this.getSpeakers(backend)
+            return {
+                label,
+                type: backend.type,
+                requested: this.autoPull,
+                ok: true,
+                ms: Date.now() - started,
+                count: speakers.length,
+                sample: speakers.slice(0, 5).map((speaker) => speaker.name),
+                hint:
+                    this.autoPull && speakers.length === 0
+                        ? '后端返回了空的讲者列表：确认后端已加载模型（/voice/speakers 里有内容）'
+                        : undefined
+            }
+        } catch (error) {
+            return {
+                label,
+                type: backend.type,
+                requested: true,
+                ok: false,
+                ms: Date.now() - started,
+                count: 0,
+                error: (error as Error)?.message ?? String(error)
+            }
+        }
     }
 
     protected headers(

@@ -131,8 +131,7 @@ describe('讲者列表的启动竞态', () => {
         expect(speakerCalls()).toBe(2)
     })
 
-    it('配置了固定讲者时，拉取失败仍能用配置里的讲者', async () => {
-        const state = { t: 0 }
+    it('配置了固定讲者时，拉取失败仍能用配置里的讲者', async () => {        const state = { t: 0 }
         const { http } = createStubHttp((call) => {
             if (call.url.endsWith('/voice/speakers')) {
                 const error = new Error('refused') as Error & { code: string }
@@ -170,6 +169,33 @@ describe('讲者列表的启动竞态', () => {
         expect(voices[0].name).toBe('本地')
         // 没拉全，仍要继续重试（把远端讲者补齐）
         expect(pipeline.needsRefresh()).toBe(true)
+    })
+
+    it('不支持自动拉取的后端：讲者为空也不算“没拉全”，不会无限重试', async () => {
+        const { http } = createStubHttp(() => ({
+            message: 'success'
+        }))
+        const config = makeConfig({
+            backends: [
+                {
+                    type: 'GPT-SoVITS2',
+                    label: '本地',
+                    url: 'http://127.0.0.1:9880',
+                    speakers: []
+                } as any
+            ]
+        })
+        const pipeline = new Pipeline({
+            http,
+            logger: silentLogger,
+            config,
+            backends: () => config.backends
+        })
+
+        const voices = await pipeline.ensureVoices()
+
+        expect(voices).toHaveLength(0)
+        expect(pipeline.needsRefresh()).toBe(false)
     })
 })
 

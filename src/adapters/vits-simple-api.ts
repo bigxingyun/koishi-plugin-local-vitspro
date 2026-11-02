@@ -9,6 +9,7 @@ import {
 import {
     AdapterContext,
     SynthesizeRequest,
+    SpeakerProbe,
     VitsAdapter,
     assertAudio,
     mimeFromFormat,
@@ -16,7 +17,8 @@ import {
     toBuffer,
     wrapError
 } from './base'
-import { BackendError } from '../core/errors'
+import { BackendError, classifyError } from '../core/errors'
+import { ErrorClass } from '../types'
 
 type SimpleSpeaker = SpeakerBase & {
     id?: number
@@ -135,37 +137,109 @@ export class VitsSimpleApiAdapter extends VitsAdapter {
         }
     }
 
+    /** 基础地址容错：去掉尾部斜杠，以及误填的 `/voice` 后缀 */
+    protected url(base: string, path: string): string {
+        const cleaned = String(base ?? '')
+            .trim()
+            .replace(/\/+$/, '')
+            .replace(/\/voice$/i, '')
+        return `${cleaned}${path}`
+    }
+
     async getSpeakers(backend: Backend): Promise<SpeakerBase[]> {
         const simple = backend as VitsSimpleApiBackend
         const configured = simple.speakers ?? []
         if (simple.autoPullSpeaker === false) return configured
 
         // 失败不吞：抛给 Pipeline，由它标记「讲者列表未拉全」并后台重试
-        const url = this.url(simple.url, '/voice/speakers')
-        const response = (await this.ctx.http.get(url, {
-            headers: this.buildHeaders(simple),
-            timeout: simple.timeout ?? 15000
-        })) as Record<
-            string,
-            { name: string; id: number; languages?: string[]; lang?: string[] }[]
-        >
+        const { response } = await this.fetchSpeakers(simple)
+        return [...configured, ...parseSpeakersResponse(response)]
+    }
 
-        const pulled: SpeakerBase[] = []
-        for (const [type, list] of Object.entries(response ?? {})) {
-            if (type === 'HUBERT-VITS' || !Array.isArray(list)) continue
-            for (const item of list) {
-                pulled.push({
-                    name: item.name,
-                    id: item.id,
-                    type,
-                    languages: (item.languages ?? item.lang ?? []).map(
-                        (lang) => String(lang).toUpperCase()
-                    )
-                })
+    /** 诊断用：带 URL / 状态 / 原始响应片段 */
+    async probeSpeakers(backend: Backend): Promise<SpeakerProbe> {
+        const simple = backend as VitsSimpleApiBackend
+        const label = simple.label ?? simple.type
+        const configured = simple.speakers ?? []
+        const started = Date.now()
+
+        if (simple.autoPullSpeaker === false) {
+            return {
+                label,
+                type: simple.type,
+                requested: false,
+                ok: configured.length > 0,
+                ms: 0,
+                count: configured.length,
+                sample: configured.slice(0, 5).map((item) => item.name),
+                hint: 'autoPullSpeaker=false：只用配置里写死的讲者'
             }
         }
 
-        return [...configured, ...pulled]
+        const url = this.url(simple.url, '/voice/speakers')
+
+        try {
+            const response = await this.ctx.http.get(url, {
+                headers: this.buildHeaders(simple),
+                timeout: simple.timeout ?? 15000
+            })
+            const pulled = parseSpeakersResponse(response)
+            const all = [...configured, ...pulled]
+
+            return {
+                label,
+                type: simple.type,
+                requested: true,
+                url,
+                ok: true,
+                status: 200,
+                ms: Date.now() - started,
+                count: all.length,
+                sample: all.slice(0, 5).map((item) => item.name),
+                hint:
+                    pulled.length === 0
+                        ? '接口通了但讲者列表为空：确认后端已加载模型'
+                        : undefined
+            }
+        } catch (error) {
+            const status =
+                (error as any)?.status ?? (error as any)?.response?.status
+            const errorClass = classifyError(error)
+            const raw = (error as any)?.response?.data
+            const body = typeof raw === 'string' ? raw.slice(0, 200) : undefined
+
+            return {
+                label,
+                type: simple.type,
+                requested: true,
+                url,
+                ok: false,
+                status,
+                ms: Date.now() - started,
+                count: 0,
+                error: `${errorClass}${status ? ` ${status}` : ''}: ${
+                    (error as Error)?.message ?? error
+                }${body ? ` · body: ${body}` : ''}`,
+                hint: speakersErrorHint(status, errorClass)
+            }
+        }
+    }
+
+    private async fetchSpeakers(
+        backend: VitsSimpleApiBackend
+    ): Promise<{ url: string; response: unknown }> {
+        const url = this.url(backend.url, '/voice/speakers')
+        try {
+            const response = await this.ctx.http.get(url, {
+                headers: this.buildHeaders(backend),
+                timeout: backend.timeout ?? 15000
+            })
+            return { url, response }
+        } catch (error) {
+            const wrapped = wrapError(error, 'vits-simple-api:speakers')
+            ;(wrapped as unknown as { url?: string }).url = url
+            throw wrapped
+        }
     }
 
     private buildHeaders(backend: VitsSimpleApiBackend): Record<string, string> {
@@ -220,4 +294,92 @@ export class VitsSimpleApiAdapter extends VitsAdapter {
 
         return payload
     }
+}
+
+/**
+ * 解析 `/voice/speakers` 的返回。标准形状是
+ * `{"VITS":[{"id":0,"name":"x","lang":["zh"]}], "HUBERT-VITS":[…]}`，
+ * 同时兼容数组、`{data:[…]}`、`{speakers:[…]}`、以 id 为键的对象等写法。
+ */
+export function parseSpeakersResponse(response: unknown): SpeakerBase[] {
+    const result: SpeakerBase[] = []
+
+    const push = (item: any, type?: string) => {
+        if (!item || typeof item !== 'object') return
+        const name = item.name ?? item.speaker_name ?? item.speaker ?? item.id
+        if (name == null) return
+
+        const speaker: SpeakerBase = {
+            ...item,
+            name: String(name),
+            languages: readLanguages(item)
+        }
+        if (type) speaker.type = type
+        result.push(speaker)
+    }
+
+    const pushList = (list: unknown, type?: string) => {
+        if (Array.isArray(list)) {
+            for (const item of list) push(item, type)
+            return
+        }
+        if (list && typeof list === 'object') {
+            for (const item of Object.values(list as Record<string, unknown>)) {
+                push(item, type)
+            }
+        }
+    }
+
+    if (Array.isArray(response)) {
+        pushList(response)
+        return result
+    }
+    if (!response || typeof response !== 'object') return result
+
+    const root = response as Record<string, unknown>
+    if (root.data != null) return (pushList(root.data), result)
+    if (root.speakers != null) return (pushList(root.speakers), result)
+
+    for (const [type, value] of Object.entries(root)) {
+        // HUBERT-VITS 的接口是 /voice/hubert-vits，本插件不接，直接跳过
+        if (type === 'HUBERT-VITS') continue
+        if (!Array.isArray(value) && (!value || typeof value !== 'object')) {
+            continue
+        }
+        pushList(value, type)
+    }
+
+    return result
+}
+
+function readLanguages(item: any): string[] {
+    const raw = item.languages ?? item.lang ?? item.language
+    if (raw == null) return []
+    const list = Array.isArray(raw) ? raw : [raw]
+    return list
+        .map((value) => String(value).toUpperCase())
+        .filter((value) => value.length > 0)
+}
+
+/** 把常见失败翻译成一句可操作的提示 */
+export function speakersErrorHint(
+    status?: number,
+    errorClass?: ErrorClass
+): string | undefined {
+    if (status === 404) {
+        return '404：确认 url 是 vits-simple-api 根地址（别带 /voice），且版本支持 /voice/speakers'
+    }
+    if (status === 401 || status === 403) {
+        return '鉴权失败：检查 apiKey，或 username / password'
+    }
+    if (errorClass === 'CONNECT') {
+        return '连不上：确认后端已启动、地址与端口正确、防火墙放行'
+    }
+    if (errorClass === 'TIMEOUT') {
+        return '超时：后端可能在加载模型，稍后再试'
+    }
+    if (errorClass === 'SERVER') {
+        return '后端 5xx：看后端日志'
+    }
+    return '返回不是预期的讲者格式，可对照 /voice/speakers 的原始内容'
 }

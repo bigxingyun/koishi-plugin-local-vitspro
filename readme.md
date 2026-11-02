@@ -113,6 +113,7 @@ plugins:
 | `tts on` / `tts off` | 开启并清熔断 / 临时关闭语音 | 3 |
 | `tts speakers` | 讲者列表（含 `id`），会强制重新拉取 | 3 |
 | `tts reload` | 立即重新拉取讲者列表 | 3 |
+| `tts probe [backend]` | 诊断讲者拉取：打印最终 URL、状态码、耗时、原始错误与建议 | 3 |
 | `tts debug <text>` | 打印归一化、切片、决策与超时，不发请求 | 3 |
 | `tts reset [backend]` | 清空测速样本与熔断状态 | 3 |
 
@@ -127,6 +128,21 @@ plugins:
 **后端比 Koishi 启动慢，讲者列表空着**
 
 不会。拉取失败会标记为「未拉全」并后台按 5s → 9s → 16s… 退避重试，最长 2 分钟一次；拉到即停，最多一分钟后还会自动刷新。也可以手动 `tts reload`。
+
+**还是拉不到讲者，是不是协议不对**
+
+先发 `tts probe`，它会打印最终请求的 URL、状态码、耗时和原始错误。对照看：
+
+| probe 显示 | 多半是 |
+| --- | --- |
+| `404` | `url` 写成了 `…/voice`（会自动纠正一次）或多了别的路径；也可能这个后端不是 vits-simple-api |
+| `401 / 403` | `apiKey` 或 `username`/`password` 不对 |
+| `CONNECT` | 后端没起、端口不对、防火墙拦了 |
+| `TIMEOUT` | 后端在加载模型，等一会儿再 `tts reload` |
+| `成功 · 0 个` | 接口通了但后端没加载模型，`/voice/speakers` 本身是空的 |
+| `未请求` | 该后端 `autoPullSpeaker=false`，只能用配置里的 `speakers` |
+
+正常返回长这样：`{"VITS":[{"id":0,"name":"派蒙","lang":["zh"]}], "HUBERT-VITS":[…], "BERT-VITS2":[…], "GPT-SOVITS":[…]}`，本插件也兼容数组、`{data:[…]}`、`{speakers:[…]}` 这几种写法。
 
 **没声音 / 只有文字**
 
@@ -147,3 +163,4 @@ plugins:
 ## License
 
 [MIT](./LICENSE)
+

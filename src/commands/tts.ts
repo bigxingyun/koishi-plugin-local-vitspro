@@ -28,7 +28,7 @@ export function registerTts(ctx: Context, service: VitsProService): void {
         return [
             `未知操作：${action}`,
             '可用：tts / tts on / tts off',
-            '　　　tts speakers / tts reload / tts debug <text> / tts reset [后端]'
+            '　　　tts speakers / tts reload / tts probe / tts debug <text> / tts reset [后端]'
         ].join('\n')
     })
 
@@ -38,8 +38,9 @@ export function registerTts(ctx: Context, service: VitsProService): void {
         const voices = await service.pipeline.refreshVoices()
         if (voices.length === 0) {
             return [
-                '没有可用讲者：后端可能还没启动，或讲者配置为空。',
-                '已开启后台自动重试（5s 起、最多 2 分钟一次），也可以稍后发 tts reload 立即重试。'
+                service.pipeline.needsRefresh()
+                    ? '没有可用讲者：后端可能还没启动，后台正在自动重试；发 tts probe 可看具体原因。'
+                    : '没有配置任何讲者：后端未启用自动拉取（autoPullSpeaker=false），或 speakers 为空。'
             ].join('\n')
         }
 
@@ -55,12 +56,55 @@ export function registerTts(ctx: Context, service: VitsProService): void {
     }).action(async () => {
         const voices = await service.pipeline.refreshVoices()
         if (voices.length === 0) {
-            return '还是没有拉到讲者：确认后端已启动、`url` 与鉴权配置正确。'
+            return service.pipeline.needsRefresh()
+                ? '还是没有拉到讲者：发 tts probe 看具体 URL / 状态码 / 错误，再检查后端是否已启动。'
+                : '没有配置任何讲者：后端未启用自动拉取（autoPullSpeaker=false），或 speakers 为空。'
         }
         const hint = service.pipeline.needsRefresh()
-            ? '（部分后端仍未拉全）'
+            ? '（部分后端仍未拉全，可发 tts probe 看原因）'
             : ''
         return `已重新拉取：${voices.length} 个讲者${hint}。`
+    })
+
+    ctx.command('tts.probe [backend:string]', '诊断讲者拉取（打印 URL / 状态码 / 原始错误）', {
+        authority: AUTHORITY
+    }).action(async (_, backend) => {
+        const probes = await service.pipeline.probe(backend)
+        if (probes.length === 0) {
+            return '没有匹配的后端（检查 label 或后端是否已启用）。'
+        }
+
+        const rows = [`讲者探测（${probes.length} 个后端）`]
+
+        for (const probe of probes) {
+            rows.push(`· ${probe.label}（${probe.type}）`)
+
+            if (!probe.requested) {
+                rows.push(
+                    `  未请求：autoPullSpeaker=false · 配置讲者 ${probe.count} 个`
+                )
+                if (probe.hint) rows.push(`  提示：${probe.hint}`)
+                continue
+            }
+
+            if (probe.url) rows.push(`  URL：${probe.url}`)
+
+            if (probe.ok) {
+                const sample = probe.sample?.length
+                    ? `：${probe.sample.join('、')}`
+                    : ''
+                rows.push(
+                    `  成功 · ${probe.status ?? 200} · ${probe.ms}ms · 讲者 ${probe.count} 个${sample}`
+                )
+            } else {
+                rows.push(`  失败 · ${probe.ms}ms`)
+                if (probe.error) rows.push(`  错误：${truncate(probe.error, 200)}`)
+            }
+
+            if (probe.hint) rows.push(`  提示：${probe.hint}`)
+        }
+
+        return rows.join('\n')
     })
 
     ctx.command('tts.debug <text:text>', '查看归一化/切片/决策结果（不发请求）', {
@@ -109,7 +153,9 @@ export async function formatStatus(service: VitsProService): Promise<string> {
 
     if (voices.length === 0) {
         rows.push(
-            '讲者列表为空：后端可能还没启动，后台正在自动重试（tts reload 可立即重试）。'
+            service.pipeline.needsRefresh()
+                ? '讲者列表为空：后端可能还没启动，后台正在自动重试（tts probe 看原因 / tts reload 立即重试）。'
+                : '没有配置任何讲者：后端未启用自动拉取，或 speakers 为空。'
         )
     } else if (service.pipeline.needsRefresh()) {
         rows.push('部分后端的讲者还没拉全，后台正在自动重试（tts reload 可立即重试）。')
@@ -145,4 +191,5 @@ function truncate(text: string, max = 80): string {
     const value = String(text ?? '').replace(/\s+/g, ' ').trim()
     return value.length > max ? `${value.slice(0, max)}…` : value
 }
+
 

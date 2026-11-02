@@ -234,6 +234,15 @@ async function main() {
         assert.ok(speakerCalls.length >= 1)
     })
 
+    await check('tts probe 返回诊断信息', async () => {
+        const probes = await ctx.vits.pipeline.probe()
+        assert.equal(probes.length, 1)
+        // 该后端 autoPullSpeaker=false，不应发请求
+        assert.equal(probes[0].requested, false)
+        assert.equal(probes[0].count, 1)
+        assert.match(probes[0].hint, /autoPullSpeaker/)
+    })
+
     console.log(`\n全部通过：${passed} 项`)
     if (typeof ctx.scope?.dispose === 'function') ctx.scope.dispose()
     process.exit(0)

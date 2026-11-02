@@ -88,7 +88,13 @@ describe('VitsSimpleApiAdapter', () => {
         })
 
         expect(speakers).toEqual([
-            { name: '派蒙', id: 0, type: 'VITS', languages: ['ZH'] }
+            {
+                name: '派蒙',
+                id: 0,
+                lang: ['zh'],
+                languages: ['ZH'],
+                type: 'VITS'
+            }
         ])
     })
 

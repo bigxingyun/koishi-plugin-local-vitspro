@@ -28,6 +28,7 @@ import { NoticeThrottle } from './notice'
 import { decidePlan, degradeActionFor } from './plan'
 import { mapWithConcurrency, withTimeout } from './scheduler'
 import { AdapterMap, createAdapters } from '../adapters'
+import { SpeakerProbe } from '../adapters/base'
 import { shortFormat } from '../adapters/base'
 
 export interface PipelineDeps {
@@ -148,7 +149,7 @@ export class Pipeline {
 
     /** 讲者列表是否还没拉全（给后台重试与状态提示用） */
     needsRefresh(): boolean {
-        return !this.voicesLoaded || this.voicesStale || this.voices.length === 0
+        return !this.voicesLoaded || this.voicesStale
     }
 
     /**
@@ -241,7 +242,7 @@ export class Pipeline {
 
         this.voices = list
         this.voicesLoaded = true
-        this.voicesStale = stale || (list.length === 0 && backends.length > 0)
+        this.voicesStale = stale
         this.lastLoadAt = this.now()
     }
 
@@ -662,6 +663,28 @@ export class Pipeline {
     }
 
     /**
+     * `tts probe`：对每个后端真实跑一次讲者探测，把 URL / 状态 / 错误带回来。
+     * 只诊断，不改缓存（刷新请用 `tts reload`）。
+     */
+    async probe(label?: string): Promise<SpeakerProbe[]> {
+        const backends = this.deps.backends().filter(
+            (backend) =>
+                backend.enabled !== false &&
+                (label == null ||
+                    (backend.label ?? backend.type) === label ||
+                    backend.type === label)
+        )
+
+        const results: SpeakerProbe[] = []
+        for (const backend of backends) {
+            const adapter = this.adapters[backend.type]
+            if (!adapter) continue
+            results.push(await adapter.probeSpeakers(backend))
+        }
+        return results
+    }
+
+    /**
      * 长度阶梯基准：每档重复 N 次取中位，结果写回 estimator，
      * 下一条真实消息立刻用新参数算超时。
      */
@@ -834,5 +857,6 @@ function median(values: number[]): number {
         ? Math.round((sorted[mid - 1] + sorted[mid]) / 2)
         : Math.round(sorted[mid])
 }
+
 
 

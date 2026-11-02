@@ -37,12 +37,11 @@ export function apply(ctx: Context, config: Config): void {
                 maxDelay: 120000,
                 attempt: async () => {
                     const voices = await service.pipeline.refreshVoices()
-                    if (
-                        voices.length > 0 &&
-                        !service.pipeline.needsRefresh()
-                    ) {
+                    if (!service.pipeline.needsRefresh()) {
                         logger.info(
-                            `讲者列表已就绪：${voices.length} 个`
+                            voices.length > 0
+                                ? `讲者列表已就绪：${voices.length} 个`
+                                : '没有配置任何讲者（后端未启用自动拉取，或 speakers 为空）'
                         )
                         return true
                     }
