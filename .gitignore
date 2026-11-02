@@ -7,3 +7,7 @@ data/
 .env
 .DS_Store
 coverage/
+
+# 内部文档，只留在本地，不上传
+/本插件开发思路.md
+/开发计划.md
