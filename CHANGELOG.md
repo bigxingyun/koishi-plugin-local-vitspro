@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 (2026-11-02)
+
+- 文档：重写 README，聚焦「插件做什么 / 机制怎么转 / 怎么安装与配置 / 常见问题」，补 npm 与 GitHub 徽章，末尾标注改自 `SilverWolfHoney/koishi-plugin-local-vits`。代码无改动。
+
 ## 0.1.0 (2026-11-02)
 
 首个可自用版本，按 `开发计划.md` v1.2 实现。
