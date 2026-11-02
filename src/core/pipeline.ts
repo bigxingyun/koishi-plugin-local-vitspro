@@ -38,6 +38,8 @@ export interface PipelineDeps {
     config: Config
     backends: () => Backend[]
     now?: () => number
+    /** 把最小元素转换成平台可发送的真实 Element（插件层注入） */
+    toElement?: (element: ElementLike) => any
 }
 
 export interface BackendStatus {
@@ -612,6 +614,11 @@ export class Pipeline {
         }
     }
 
+    /** 交给平台发送前，转换成 koishi/satori 能识别的真实 Element */
+    private toPlatformElement(element: ElementLike): any {
+        return this.deps.toElement ? this.deps.toElement(element) : element
+    }
+
     private deliver(results: AudioResult[], session: any): ElementLike {
         const sentOnly = results.filter((item) => item.sent)
         if (sentOnly.length === results.length) {
@@ -638,7 +645,11 @@ export class Pipeline {
         if (session && rest.length > 0) {
             for (const item of rest) {
                 void Promise.resolve(
-                    session.send(audioElement(item.data, shortFormat(item.mime)))
+                    session.send(
+                        this.toPlatformElement(
+                            audioElement(item.data, shortFormat(item.mime))
+                        )
+                    )
                 ).catch((error: unknown) => {
                     this.logger.warn(
                         `[vitspro] 补发语音失败：${(error as Error)?.message ?? error}`

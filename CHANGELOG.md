@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.11 (2026-11-02)
+
+- 修复 `TypeError: Invalid content: [object Object]`：`say()` / `predict()` 改为返回 **真实的 koishi `h` Element**（`h.text` / `h.audio`），多段补发也走同一转换。此前返回的是普通 `{type, attrs, children}` 对象，satori 的 `Element.normalize` 不认。
+- 冒烟新增断言：`h.normalize([element])` 必须通过，防止再退回普通对象。
 ## 0.1.10 (2026-11-02)
 
 - 安全：README 示例里的真实后端地址与用户名已替换为占位符；同时重写 git 历史，仓库中不再包含该字符串。
@@ -91,6 +95,7 @@
 - 未对真实 TTS 后端联调（开发环境无后端），请求格式按上游实现与各后端 API 对齐；
 - 不支持 gradio 后端；
 - 不支持自动翻译。
+
 
 
 

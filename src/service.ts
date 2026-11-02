@@ -48,7 +48,9 @@ export class VitsProService extends VitsBase {
             http: (ctx as unknown as { http: any }).http,
             logger: ctx.logger('vitspro'),
             config,
-            backends: () => config.backends
+            backends: () => config.backends,
+            // 多段补发也必须是真实 Element，否则 satori 会报 Invalid content
+            toElement
         })
     }
 
@@ -75,8 +77,26 @@ export class VitsProService extends VitsBase {
     }
 }
 
-/** 核心管道产出的元素结构与 koishi `h` 一致，这里只做类型收口 */
-function toElement(element: ElementLike): h {
-    return element as unknown as h
-}
+/**
+ * 核心管道返回的是最小元素结构，这里必须用 koishi `h` 重新构造。
+ *
+ * 直接把 `{ type, attrs, children }` 交给 satori 会抛
+ * `TypeError: Invalid content: [object Object]`（chatluna-character 转发时触发）。
+ * 上游 luna-vits 的 `predict` 也是直接返回 `h.audio(...)`，这里保持一致。
+ */
+export function toElement(element: ElementLike): h {
+    if (!element || typeof element !== 'object') return h.text('')
 
+    if (element.type === 'text') {
+        return h.text(String(element.attrs?.content ?? ''))
+    }
+
+    if (element.type === 'audio') {
+        const src = String(element.attrs?.src ?? '')
+        if (!src) return h.text('')
+        return h.audio(src)
+    }
+
+    const children = (element.children ?? []).map((child) => toElement(child))
+    return h(element.type, { ...(element.attrs ?? {}) }, ...children)
+}

@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict')
-const { Context } = require('koishi')
+const { Context, h } = require('koishi')
 const plugin = require('../lib/index.js')
 
 /**
@@ -127,6 +127,11 @@ async function main() {
 
         assert.equal(element.type, 'audio')
         assert.match(String(element.attrs.src), /^data:.*;base64,/)
+
+        // satori 只接受 h() 构造的 Element；普通对象会抛 Invalid content
+        const normalized = h.normalize([element])
+        assert.equal(normalized[0]?.type, 'audio', 'say() 返回的元素无法被 satori 接受')
+        assert.ok(element.toString().includes('audio'))
         assert.ok(calls.length > 0)
 
         const sent = String(calls[calls.length - 1].body.get('text'))
@@ -393,6 +398,7 @@ main().catch((error) => {
     console.error(error)
     process.exit(1)
 })
+
 
 
 
