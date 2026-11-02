@@ -1,0 +1,22 @@
+commands:
+  vitspro:
+    description: Synthesize a piece of text into voice
+    options:
+      speaker: Speaker name or id
+  vitsbench:
+    description: Benchmark backend inference speed and feed it back to the timeout model
+    options:
+      repeat: Repeat count per length step
+      speaker: Speaker to use
+      reset: Reset samples of the backend first
+      force: Reset circuit breaker state first
+  tts:
+    description: TTS status and control
+    messages:
+      unknown: Unknown action.
+  tts.speakers:
+    description: List available speakers
+  tts.debug:
+    description: Show normalization / splitting / decision result (no request)
+  tts.reset:
+    description: Reset samples and circuit breaker state

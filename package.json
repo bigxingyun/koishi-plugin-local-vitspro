@@ -1,0 +1,91 @@
+{
+  "name": "koishi-plugin-local-vitspro",
+  "version": "0.1.0",
+  "description": "多后端 TTS 聚合插件：序列化解包、长文本切片与音频聚合、按推理速度自适应的超时与熔断、chatluna 工具",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "locales",
+    "readme.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "koishi",
+    "plugin",
+    "service",
+    "vits",
+    "tts",
+    "gpt-sovits",
+    "vits-simple-api",
+    "fish-audio",
+    "chatluna"
+  ],
+  "author": "bigxingyun",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bigxingyun/koishi-plugin-local-vitspro.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bigxingyun/koishi-plugin-local-vitspro/issues"
+  },
+  "homepage": "https://github.com/bigxingyun/koishi-plugin-local-vitspro#readme",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "smoke": "npm run build && node scripts/smoke.cjs",
+    "verify": "npm run typecheck && npm run test && npm run smoke",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@initencounter/vits": "^0.0.3",
+    "js-yaml": "^4.1.0"
+  },
+  "peerDependencies": {
+    "koishi": "^4.18.0",
+    "koishi-plugin-chatluna": "*",
+    "@langchain/core": "*",
+    "zod": "*"
+  },
+  "peerDependenciesMeta": {
+    "koishi-plugin-chatluna": {
+      "optional": true
+    },
+    "@langchain/core": {
+      "optional": true
+    },
+    "zod": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.0.0",
+    "koishi": "^4.18.11",
+    "typescript": "^5.9.0",
+    "vitest": "^5.0.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "koishi": {
+    "description": {
+      "en": "Multi-backend TTS aggregator: unwrap serialized messages, split long text and merge audio, speed-adaptive timeout and circuit breaker, chatluna tool.",
+      "zh": "多后端 TTS 聚合：自动解包 chatluna 的序列化消息、长文本切片与音频聚合、按推理速度自适应超时与熔断、chatluna 工具调用"
+    },
+    "service": {
+      "implements": [
+        "vits"
+      ],
+      "optional": [
+        "translator",
+        "chatluna"
+      ]
+    }
+  }
+}
+

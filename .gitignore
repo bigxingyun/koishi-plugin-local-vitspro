@@ -1,0 +1,9 @@
+node_modules/
+lib/
+dist/
+data/
+*.log
+*.tgz
+.env
+.DS_Store
+coverage/

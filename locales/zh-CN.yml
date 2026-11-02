@@ -1,0 +1,22 @@
+commands:
+  vitspro:
+    description: 用 TTS 合成一段语音
+    options:
+      speaker: 讲者名或讲者 id
+  vitsbench:
+    description: 基准测速：测量后端推理速度并写回超时模型
+    options:
+      repeat: 每档重复次数
+      speaker: 指定讲者
+      reset: 先清空该后端样本
+      force: 先清空熔断状态
+  tts:
+    description: TTS 状态与控制
+    messages:
+      unknown: 未知操作。
+  tts.speakers:
+    description: 列出可用讲者
+  tts.debug:
+    description: 查看归一化/切片/决策结果（不发请求）
+  tts.reset:
+    description: 清空测速样本与熔断状态
