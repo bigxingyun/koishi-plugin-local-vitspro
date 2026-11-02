@@ -20,7 +20,8 @@ export function makeConfig(patch: Partial<Config> = {}): Config {
             password: '',
             apiKey: '',
             token: '',
-            timeout: 5000
+            timeout: 5000,
+            backendTimeout: 0
         },
         backendsSource: 'schema',
         backendsFile: '',
@@ -154,6 +155,7 @@ export function sentenceOfLength(length: number): string {
     while (text.length < length) text += unit
     return text.slice(0, length)
 }
+
 
 
 

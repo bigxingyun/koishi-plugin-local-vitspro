@@ -232,6 +232,9 @@ export function buildAutoBackend(
             password: auto.password || undefined,
             apiKey: auto.apiKey || undefined,
             autoPullSpeaker: true,
+            ...(auto.backendTimeout > 0
+                ? { timeout: auto.backendTimeout }
+                : {}),
             speakers: result.speakers ?? []
         }
     }
@@ -310,3 +313,4 @@ function classifyPaths(paths: string[]): DetectKind {
 function gptHint(kind: DetectKind): string {
     return `已识别 GPT-SoVITS ${kind === 'gpt-sovits-v1' ? 'v1（老版 api.py）' : 'v2（api_v2.py）'}；它没有讲者列表，需要在手动后端里为讲者配置 ref_audio_path（参考音频，服务端路径）`
 }
+

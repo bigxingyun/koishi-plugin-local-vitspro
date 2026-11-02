@@ -19,6 +19,7 @@ function autoConfig(patch: Partial<AutoConfig> = {}): AutoConfig {
         apiKey: '',
         token: '',
         timeout: 3000,
+        backendTimeout: 0,
         ...patch
     }
 }
@@ -241,6 +242,22 @@ describe('buildAutoBackend', () => {
         expect(backend.autoPullSpeaker).toBe(true)
         expect(backend.speakers[0].name).toBe('银狼')
         expect(backend.username).toBeUndefined()
+        expect(backend.timeout).toBeUndefined()
+    })
+
+    it('auto.backendTimeout 会写进自动后端', () => {
+        const backend = buildAutoBackend(
+            autoConfig({ backendTimeout: 300000 }),
+            {
+                ok: true,
+                kind: 'vits-simple-api',
+                baseUrl: 'http://127.0.0.1:23456',
+                probes: [],
+                speakers: [{ name: '银狼', languages: ['ZH'] }]
+            }
+        ) as any
+
+        expect(backend.timeout).toBe(300000)
     })
 
     it('GPT-SoVITS v2 → 自动带 apiVersion', () => {

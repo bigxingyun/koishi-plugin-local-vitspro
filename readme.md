@@ -88,6 +88,7 @@ plugins:
       password: 你的密码
       # apiKey: xxx                     # 用 X-API-KEY 的后端
       # token: xxx                      # 用 Authorization: Bearer 的后端
+      # backendTimeout: 300000          # 后端很慢（CPU 推理）时直接写死请求超时
 ```
 
 探测顺序（全部是无副作用的 GET）：`/voice/speakers` → `/openapi.json` → `/tts` → `/`。
@@ -232,6 +233,7 @@ GPT-SoVITS 没有「讲者列表」接口，讲者就是一组参考音频配置
 ## License
 
 [MIT](./LICENSE)
+
 
 
 

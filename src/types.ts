@@ -212,6 +212,8 @@ export interface AutoConfig {
     token: string
     /** 探测请求超时（毫秒） */
     timeout: number
+    /** 自动后端的请求超时（毫秒），0 表示用动态/冷启动 */
+    backendTimeout: number
 }
 
 /** 熔断配置（Breaker 的构造参数，也出现在 Config 里） */
@@ -222,3 +224,4 @@ export interface BreakerConfig {
     cooldown: number
     maxCooldown: number
 }
+

@@ -309,7 +309,10 @@ export const Config: Schema<Config> = Schema.intersect([
                 .description('Authorization: Bearer <token>'),
             timeout: Schema.number()
                 .default(5000)
-                .description('单个探测请求的超时（毫秒）')
+                .description('单个探测请求的超时（毫秒）'),
+            backendTimeout: Schema.number()
+                .default(0)
+                .description('自动后端的请求超时（毫秒）；0=用动态超时，慢机器建议直接写 300000')
         }).description(
             '自动配置（只填 URL 与凭证；检测到 vits-simple-api 会自动拉讲者。GPT-SoVITS 仍需在手动后端里配参考音频）'
         )
@@ -489,5 +492,6 @@ export const Config: Schema<Config> = Schema.intersect([
 ]) as unknown as Schema<Config>
 
 export const name = 'local-vitspro'
+
 
 
