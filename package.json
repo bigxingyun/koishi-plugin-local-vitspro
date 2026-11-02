@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-local-vitspro",
   "version": "0.1.0",
-  "description": "多后端 TTS 聚合插件：序列化解包、长文本切片与音频聚合、按推理速度自适应的超时与熔断、chatluna 工具",
+  "description": "多后端 TTS 聚合插件：自动解包 chatluna 消息、长文本切片与音频拼接、按实测推理速度自适应超时与熔断，支持 vits-simple-api / GPT-SoVITS / fish-audio / QQ 声聊",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "files": [

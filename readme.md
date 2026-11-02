@@ -1,5 +1,7 @@
 # koishi-plugin-local-vitspro
 
+> 仓库：[github.com/bigxingyun/koishi-plugin-local-vitspro](https://github.com/bigxingyun/koishi-plugin-local-vitspro) · 问题反馈：[Issues](https://github.com/bigxingyun/koishi-plugin-local-vitspro/issues)
+
 多后端 TTS 聚合插件，针对 [koishi-plugin-local-vits](https://github.com/SilverWolfHoney/koishi-plugin-local-vits)（luna-vits 的本地化改版）的三个已知问题重写：
 
 1. **序列化格式被当成正文**：chatluna / chatluna-character 传进来的 `<message><voice>…</voice></message>` 会被正确解包，长句能整条出语音；
@@ -7,6 +9,8 @@
 3. **长文本直接推理**：插件层切片（中文逗号 / 中文句号 / 英文逗号 / 英文句号 / 不切），再把音频拼回一条。
 
 支持后端：`vits-simple-api`、`GPT-SoVITS v2`（`/tts` API）、`fish-audio`、`QQ 声聊`。gradio 暂不支持。
+
+一句话简介：让 chatluna 的长回复能整条念出来，并且在后端抽风时快速降级而不是把 bot 卡住。
 
 ## 安装
 
