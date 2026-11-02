@@ -268,7 +268,14 @@ export class Pipeline {
 
         for (const backend of backends) {
             const adapter = this.adapters[backend.type]
-            if (!adapter) continue
+            if (!adapter) {
+                this.logger.warn(
+                    `[vitspro] 未知后端类型 ${String(backend.type)}（${
+                        backend.label ?? '未命名'
+                    }），已跳过；请检查 type 字段`
+                )
+                continue
+            }
 
             const wantsPull =
                 adapter.autoPull && backend.autoPullSpeaker !== false
@@ -781,7 +788,14 @@ export class Pipeline {
         const results: SpeakerProbe[] = []
         for (const backend of backends) {
             const adapter = this.adapters[backend.type]
-            if (!adapter) continue
+            if (!adapter) {
+                this.logger.warn(
+                    `[vitspro] 未知后端类型 ${String(backend.type)}（${
+                        backend.label ?? '未命名'
+                    }），已跳过；请检查 type 字段`
+                )
+                continue
+            }
             results.push(await adapter.probeSpeakers(backend))
         }
         return results
@@ -961,6 +975,7 @@ function median(values: number[]): number {
         ? Math.round((sorted[mid - 1] + sorted[mid]) / 2)
         : Math.round(sorted[mid])
 }
+
 
 
 

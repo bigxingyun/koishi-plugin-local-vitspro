@@ -123,6 +123,8 @@ plugins:
 
 配好后发 `vitsdebug speakers` 确认讲者，再发 `vitsbench` 让超时模型吃到真实速度。
 
+`type` 可以省略：缺少时按字段推断（有 `url` → vits-simple-api；有 `ref_audio_path` / `gpt_weights` / `apiVersion` → GPT-SoVITS；`accountId` → QQ 声聊；`reference_id` → fish-audio）。推断结果会写进日志，`vitsdebug` 里能看到；无法推断或缺少必填字段的条目会被跳过并说明原因，不会再出现「静默 0 个讲者」。
+
 ## 支持的后端
 
 | 后端 | 必填 | 说明 |

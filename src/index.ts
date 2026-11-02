@@ -6,6 +6,7 @@ import { VitsProService } from './service'
 import { Backend } from './types'
 import { parseBackendsYaml } from './core/backends-file'
 import { RefreshLoop } from './core/refresh'
+import { normalizeBackends } from './core/backend-config'
 import { registerCommands } from './commands'
 import { registerChatlunaTool } from './chatluna/tool'
 
@@ -21,12 +22,24 @@ export const inject = {
 }
 
 export function apply(ctx: Context, config: Config): void {
+    // 配置层兜底：type 缺失/写错时按字段推断，无法使用的条目直接剔除并告警
+    const normalized = normalizeBackends(config.backends)
+    config.backends = normalized.backends
+
+    if (normalized.issues.length > 0) {
+        const logger = ctx.logger('vitspro')
+        for (const issue of normalized.issues) {
+            logger.warn(`[vitspro] 配置问题：${issue}`)
+        }
+    }
+
     applyFileMode(ctx, config)
 
     ctx.plugin(VitsProService, config)
 
     ctx.inject(['vits'], (ctx) => {
         const service = ctx.vits as unknown as VitsProService
+        service.configIssues = normalized.issues
         const logger = ctx.logger('vitspro')
 
         // TTS 后端经常比 Koishi 启动慢：拉不到讲者时后台按退避重试，
@@ -119,6 +132,7 @@ function applyFileMode(ctx: Context, config: Config): void {
         )
     }
 }
+
 
 
 

@@ -337,6 +337,47 @@ async function main() {
         assert.equal(result.kind, 'vits-simple-api')
     })
 
+    await check('手动后端漏写 type 时按字段推断，不再 0 讲者', async () => {
+        const typedCtx = new Context()
+
+        typedCtx.set('http', {
+            get: async (url) => {
+                if (url.endsWith('/voice/speakers')) {
+                    return { VITS: [{ id: 0, name: '银狼', lang: ['zh'] }] }
+                }
+                const error = new Error('not found')
+                error.status = 404
+                throw error
+            },
+            post: async () => silenceWav()
+        })
+
+        typedCtx.plugin(
+            plugin,
+            plugin.Config({
+                // 故意不写 type，复现线上 koishi.yml 的写法
+                backends: [
+                    {
+                        url: 'http://typed.local:23456',
+                        username: 'u',
+                        password: 'p'
+                    }
+                ]
+            })
+        )
+
+        await new Promise((resolve) => setTimeout(resolve, 300))
+
+        const voices = await typedCtx.vits.pipeline.refreshVoices()
+        assert.equal(voices.length, 1, '缺少 type 的后端没有被推断出来')
+        assert.match(voices[0].key, /银狼/)
+        assert.equal(
+            typedCtx.vits.configIssues.some((issue) => issue.includes('推断为 vits-simple-api')),
+            true,
+            '没有记录推断说明'
+        )
+    })
+
     console.log(`\n全部通过：${passed} 项`)
     if (typeof ctx.scope?.dispose === 'function') ctx.scope.dispose()
     process.exit(0)

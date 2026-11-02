@@ -33,18 +33,16 @@ const VitsSimpleApiSpeaker = Schema.object({
         .description('该讲者支持的语言（大写，如 ZH / EN / JA）'),
     format: Schema.string().default('wav').description('音频格式'),
     noise: Schema.number().description('感情强度（VITS / BERT-VITS2）'),
-    noise_w: Schema.number().description('音素长度（VITS / BERT-VITS2）'),
+    noise_w: Schema.number().hidden(),
     length: Schema.number().description('语速（VITS / BERT-VITS2）'),
-    sdp_ratio: Schema.number().description('SDP/DP 混合比（BERT-VITS2）'),
-    segment_size: Schema.number().description('分段大小（GPT-SOVITS）'),
-    emotion: Schema.number().description('情感（W2V2-VITS）'),
-    preset: Schema.string().description('vits-simple-api 预设名（GPT-SOVITS）'),
-    prompt_text: Schema.string().description('参考文本（GPT-SOVITS）'),
-    prompt_lang: Schema.string().description('参考文本语言（GPT-SOVITS）'),
-    reference_audio: Schema.string().description(
-        '参考音频的**服务端**绝对路径（GPT-SOVITS）'
-    ),
-    text_prompt: Schema.string().description('文本提示（BERT-VITS2）')
+    sdp_ratio: Schema.number().hidden(),
+    segment_size: Schema.number().hidden(),
+    emotion: Schema.number().hidden(),
+    preset: Schema.string().hidden(),
+    prompt_text: Schema.string().hidden(),
+    prompt_lang: Schema.string().hidden(),
+    reference_audio: Schema.string().hidden(),
+    text_prompt: Schema.string().hidden()
 }).description('vits-simple-api 讲者')
 
 const GptSovits2Speaker = Schema.object({
@@ -63,15 +61,15 @@ const GptSovits2Speaker = Schema.object({
     languages: Schema.array(Schema.string())
         .default([])
         .description('该讲者支持的语言；填了会按语言生成多个讲者 key（如 丛雨_ZH）'),
-    text_split_method: Schema.string().description('后端自带切句方法，默认 cut5'),
-    batch_size: Schema.number(),
+    text_split_method: Schema.string().hidden(),
+    batch_size: Schema.number().hidden(),
     speed_factor: Schema.number().description('语速（v1 用 speed）'),
-    speed: Schema.number().description('语速（v1）'),
-    top_k: Schema.number(),
-    top_p: Schema.number(),
-    temperature: Schema.number(),
-    sample_steps: Schema.number().description('采样步数（v3/v4 模型）'),
-    cfg_rate: Schema.number().description('cfg 强度（v3/v4 模型）'),
+    speed: Schema.number().hidden(),
+    top_k: Schema.number().hidden(),
+    top_p: Schema.number().hidden(),
+    temperature: Schema.number().hidden(),
+    sample_steps: Schema.number().hidden(),
+    cfg_rate: Schema.number().hidden(),
     media_type: Schema.string().default('wav').description('wav 最稳，raw 无头')
 }).description('GPT-SoVITS 讲者')
 
@@ -80,10 +78,10 @@ const FishAudioSpeaker = Schema.object({
     reference_id: Schema.string().required().description('fish.audio 模型 id'),
     languages: Schema.array(Schema.string()).default([]).description('支持的语言'),
     format: Schema.union(['wav', 'pcm', 'mp3']).default('wav'),
-    chunk_length: Schema.number().default(50),
-    normalize: Schema.boolean().default(true),
-    latency: Schema.union(['normal', 'balanced']).default('normal'),
-    mp3_bitrate: Schema.union([64, 128, 192]).default(64)
+    chunk_length: Schema.number().default(50).hidden(),
+    normalize: Schema.boolean().default(true).hidden(),
+    latency: Schema.union(['normal', 'balanced']).default('normal').hidden(),
+    mp3_bitrate: Schema.union([64, 128, 192]).default(64).hidden()
 }).description('fish-audio 讲者')
 
 const QQVoiceSpeaker = Schema.object({
@@ -107,7 +105,7 @@ const VitsSimpleApiBackend = Schema.object({
     autoPullSpeaker: Schema.boolean()
         .default(true)
         .description('从 /voice/speakers 自动拉取讲者'),
-    headers: Schema.dict(Schema.string()).default({}).description('附加请求头'),
+    headers: Schema.dict(Schema.string()).default({}).hidden(),
     speakers: Schema.array(VitsSimpleApiSpeaker).default([])
 }).description('vits-simple-api')
 
@@ -123,29 +121,29 @@ const GptSovits2Backend = Schema.object({
         .default('auto')
         .description('auto=先 POST，405/404 时回退 GET'),
     timeout: Schema.number().description('后端级超时（毫秒）'),
-    headers: Schema.dict(Schema.string()).default({}).description('附加请求头'),
+    headers: Schema.dict(Schema.string()).default({}).hidden(),
     config: Schema.object({
         text_split_method: Schema.string().default('cut5'),
         batch_size: Schema.number().default(1),
-        batch_threshold: Schema.number().default(0.75),
-        split_bucket: Schema.boolean().default(true),
+        batch_threshold: Schema.number().default(0.75).hidden(),
+        split_bucket: Schema.boolean().default(true).hidden(),
         speed_factor: Schema.number().default(1),
-        fragment_interval: Schema.number().default(0.3),
+        fragment_interval: Schema.number().default(0.3).hidden(),
         top_k: Schema.number().default(15),
         top_p: Schema.number().default(1),
         temperature: Schema.number().default(1),
-        seed: Schema.number().default(-1),
+        seed: Schema.number().default(-1).hidden(),
         media_type: Schema.string().default('wav'),
-        streaming_mode: Schema.boolean().default(false),
-        parallel_infer: Schema.boolean().default(true),
-        use_cuda_graph: Schema.boolean().default(true),
-        repetition_penalty: Schema.number().default(1.35),
-        sample_steps: Schema.number().description('v3/v4 采样步数'),
-        cfg_rate: Schema.number().description('v3/v4 cfg 强度'),
-        super_sampling: Schema.boolean().default(false),
-        cut_punc: Schema.string().description('v1 切句标点'),
-        speed: Schema.number().description('v1 语速'),
-        if_sr: Schema.boolean().description('v1 超分')
+        streaming_mode: Schema.boolean().default(false).hidden(),
+        parallel_infer: Schema.boolean().default(true).hidden(),
+        use_cuda_graph: Schema.boolean().default(true).hidden(),
+        repetition_penalty: Schema.number().default(1.35).hidden(),
+        sample_steps: Schema.number().hidden(),
+        cfg_rate: Schema.number().hidden(),
+        super_sampling: Schema.boolean().default(false).hidden(),
+        cut_punc: Schema.string().hidden(),
+        speed: Schema.number().hidden(),
+        if_sr: Schema.boolean().hidden()
     })
         .description('全局默认请求参数（讲者里可覆盖）')
         .default({} as never),
@@ -159,7 +157,7 @@ const FishAudioBackend = Schema.object({
     baseUrl: Schema.string().default('https://api.fish.audio'),
     apiKey: Schema.string().role('secret').required().description('fish.audio API Key'),
     timeout: Schema.number().description('后端级超时（毫秒）'),
-    headers: Schema.dict(Schema.string()).default({}).description('附加请求头'),
+    headers: Schema.dict(Schema.string()).default({}).hidden(),
     speakers: Schema.array(FishAudioSpeaker).default([])
 }).description('fish-audio')
 
@@ -264,75 +262,68 @@ export interface Config {
 
 export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
-        defaultSpeaker: Schema.dynamic('speaker')
-            .default('')
-            .description('全局默认讲者（`tts speakers` 可查）'),
-        backendsSource: Schema.union(['schema', 'file'])
-            .default('schema')
-            .description(
-                '后端来源：schema=控制台配置；file=读一份 YAML（不读旧插件路径）'
-            ),
-        backendsFile: Schema.string()
-            .default('data/local-vitspro/config.yml')
-            .description('file 模式的后端列表路径'),
-        backends: Schema.array(backendSchema)
-            .default([])
-            .description(
-                '后端列表。同一份配置里可以放多个后端，讲者 key 会带上后端名去重'
-            )
-    }).description('基础'),
-
-    Schema.object({
         auto: Schema.object({
             enabled: Schema.boolean()
                 .default(false)
-                .description('开启后只需填 url 与凭证，自动探测后端类型与协议'),
+                .description('开启后只需填地址与凭证，自动识别后端'),
             url: Schema.string()
                 .role('link')
-                .description(
-                    '后端地址：根地址或完整端点都行（…/voice/vits、…/tts、…/voice 会自动还原）'
-                ),
-            label: Schema.string()
-                .default('自动')
-                .description('自动后端的展示名'),
-            username: Schema.string().description(
-                'HTTP Basic Auth 用户名（vits-simple-api 开了认证时填）'
-            ),
+                .description('后端地址：根地址或完整端点（…/voice/vits、…/tts）都行'),
+            username: Schema.string().description('Basic Auth 用户名（可选）'),
             password: Schema.string()
                 .role('secret')
-                .description('HTTP Basic Auth 密码'),
+                .description('Basic Auth 密码（可选）'),
             apiKey: Schema.string()
                 .role('secret')
-                .description('X-API-KEY（部分后端用这个）'),
+                .hidden()
+                .description('X-API-KEY（可选）'),
             token: Schema.string()
                 .role('secret')
-                .description('Authorization: Bearer <token>'),
-            timeout: Schema.number()
-                .default(5000)
-                .description('单个探测请求的超时（毫秒）'),
+                .hidden()
+                .description('Authorization: Bearer（可选）'),
             backendTimeout: Schema.number()
                 .default(0)
-                .description('自动后端的请求超时（毫秒）；0=用动态超时，慢机器建议直接写 300000')
-        }).description(
-            '自动配置（只填 URL 与凭证；检测到 vits-simple-api 会自动拉讲者。GPT-SoVITS 仍需在手动后端里配参考音频）'
-        )
-    }).description('自动配置'),
+                .description('请求超时(ms)，0=自动；后端很慢就填 300000'),
+            label: Schema.string().default('自动').hidden(),
+            timeout: Schema.number()
+                .default(5000)
+                .hidden()
+                .description('单个探测请求的超时(ms)')
+        }).description('只填 url 与凭证，插件自动识别 vits-simple-api / GPT-SoVITS')
+    }).description('自动配置（推荐）'),
+
+    Schema.object({
+        defaultSpeaker: Schema.dynamic('speaker')
+            .default('')
+            .description('默认讲者；留空则用第一个（vitsdebug speakers 可查）'),
+        backends: Schema.array(backendSchema)
+            .default([])
+            .description('手动后端列表；开了自动配置且只有一个后端时可以不填'),
+        backendsSource: Schema.union(['schema', 'file'])
+            .default('schema')
+            .hidden()
+            .description('后端来源：schema=控制台；file=读 YAML'),
+        backendsFile: Schema.string()
+            .default('data/local-vitspro/config.yml')
+            .hidden()
+            .description('file 模式的后端列表路径')
+    }).description('基础'),
 
     Schema.object({
         text: Schema.object({
-            stripMarkdown: Schema.boolean().default(true),
-            stripEmoji: Schema.boolean().default(true),
+            stripMarkdown: Schema.boolean()
+                .default(true)
+                .description('去掉 Markdown 标记'),
+            stripEmoji: Schema.boolean()
+                .default(true)
+                .description('去掉 emoji（后端念不出来）'),
             newlineAs: Schema.union(['space', 'period'])
                 .default('space')
-                .description('换行如何处理：空格 / 句号'),
-            blockJoin: Schema.string()
-                .default('')
-                .description('多个 <message> 块之间的连接符'),
-            extraTags: Schema.array(Schema.string())
-                .default([])
-                .description('额外需要解包的标签名（保留内层文本）')
-        }).description('文本归一化')
-    }).description('文本处理'),
+                .description('换行转成空格还是句号'),
+            blockJoin: Schema.string().default('').hidden(),
+            extraTags: Schema.array(Schema.string()).default([]).hidden()
+        })
+    }).description('文本处理').collapse(),
 
     Schema.object({
         split: Schema.object({
@@ -344,154 +335,116 @@ export const Config: Schema<Config> = Schema.intersect([
                 'en_comma'
             ])
                 .default('zh_period')
-                .description(
-                    '切片模式：none 不切 / zh_period 中文句号 / zh_comma 中文逗号 / en_period 英文句号 / en_comma 英文逗号'
-                ),
-            allowFallback: Schema.boolean()
-                .default(true)
-                .description('找不到主标点时允许降级（逗号 → 空格 → 硬切）'),
-            minSegmentChars: Schema.natural()
-                .min(1)
-                .default(8)
-                .description('短于该字数的段并入相邻段'),
+                .description('按哪种标点切片；none=不切'),
             maxSegmentChars: Schema.natural()
                 .min(10)
                 .default(120)
-                .description('单段字符上限'),
-            maxSegments: Schema.natural()
-                .min(1)
-                .default(8)
-                .description('段数上限，超出合并尾段'),
-            concurrency: Schema.natural()
-                .min(1)
-                .max(8)
-                .default(1)
-                .description('并行合成数；单后端/慢机器建议 1，快后端可调 2')
-        }).description('切片')
-    }).description('切片'),
+                .description('单段字数上限'),
+            allowFallback: Schema.boolean().default(true).hidden(),
+            minSegmentChars: Schema.natural().min(1).default(8).hidden(),
+            maxSegments: Schema.natural().min(1).default(8).hidden(),
+            concurrency: Schema.natural().min(1).max(8).default(1).hidden()
+        })
+    }).description('切片').collapse(),
 
     Schema.object({
         aggregate: Schema.object({
             type: Schema.union(['auto', 'concat', 'multi'])
                 .default('auto')
-                .description('auto=能拼就拼，否则多段；concat=只拼；multi=永远多段'),
+                .description('auto=能拼就拼，否则分多条发'),
             maxAudioSeconds: Schema.number()
                 .min(1)
                 .default(55)
-                .description('估算超过该时长就先切片/转文字（QQ 语音约 60s 上限）'),
+                .description('超过该时长就转文字（QQ 语音约 60s）'),
             partialPolicy: Schema.union(['keep-ok', 'all-or-nothing'])
                 .default('keep-ok')
-                .description('部分段失败时的取舍')
-        }).description('音频聚合')
-    }).description('聚合'),
+                .hidden()
+        })
+    }).description('聚合').collapse(),
 
     Schema.object({
         timeout: Schema.object({
             mode: Schema.union(['auto', 'manual'])
                 .default('auto')
-                .description('auto=按测速模型动态计算；manual=固定 manual 值'),
+                .description('auto=按实测速度算；manual=固定值'),
             manual: Schema.number()
                 .default(60000)
-                .description('manual 模式下的固定超时（毫秒）'),
-            factor: Schema.number()
-                .default(2)
-                .description('auto 模式的安全系数'),
-            min: Schema.number().default(5000).description('超时下限（毫秒）'),
-            max: Schema.number().default(120000).description('超时上限（毫秒）'),
-            overhead: Schema.number()
-                .default(800)
-                .description('固定开销（毫秒），叠加在估算值上'),
+                .description('manual 模式下的固定超时(ms)'),
             coldStart: Schema.number()
                 .default(60000)
-                .description(
-                    '还没有测速样本时的冷启动超时（毫秒）；后端首次加载模型往往很慢，慢机器建议配合 backends[].timeout 使用'
-                )
-        }).description('超时'),
+                .description('还没有测速样本时的超时(ms)'),
+            factor: Schema.number().default(2).hidden(),
+            min: Schema.number().default(5000).hidden(),
+            max: Schema.number().default(120000).hidden(),
+            overhead: Schema.number().default(800).hidden()
+        }),
         breaker: Schema.object({
             mode: Schema.union(['auto', 'manual', 'off'])
                 .default('auto')
-                .description('auto=退避 + 半开；manual=固定冷却；off=永不熔断'),
-            scope: Schema.union(['backend', 'speaker'])
-                .default('backend')
-                .description('熔断粒度'),
-            failureThreshold: Schema.natural()
-                .min(1)
-                .default(2)
-                .description('连续失败多少次熔断'),
-            cooldown: Schema.number()
-                .default(30000)
-                .description('首次冷却（毫秒）'),
-            maxCooldown: Schema.number()
-                .default(600000)
-                .description('冷却上限（毫秒）')
-        }).description('熔断'),
+                .description('auto=退避+半开；manual=固定冷却；off=不熔断'),
+            failureThreshold: Schema.natural().min(1).default(2),
+            cooldown: Schema.number().default(30000).description('冷却(ms)'),
+            maxCooldown: Schema.number().default(600000).hidden(),
+            scope: Schema.union(['backend', 'speaker']).default('backend').hidden()
+        }),
         notice: Schema.object({
             mode: Schema.union(['off', 'session', 'admin'])
                 .default('session')
                 .description('降级提示发给谁'),
             interval: Schema.number()
                 .default(600000)
-                .description('同一原因的最小提示间隔（毫秒）')
-        }).description('降级提示')
-    }).description('超时与熔断'),
+                .description('同一原因的最小提示间隔(ms)')
+        })
+    }).description('超时与熔断').collapse(),
 
     Schema.object({
         toolCall: Schema.object({
             minChars: Schema.natural()
                 .default(2)
-                .description('低于该字数不合成（工具路径）'),
+                .description('低于该字数不合成（工具调用）'),
             maxChars: Schema.natural()
                 .default(300)
-                .description('高于该字数不合成（工具路径）')
-        }).description('工具调用阈值'),
+                .description('高于该字数不合成（工具调用）')
+        }),
         degrade: Schema.object({
             tool: Schema.union(['error', 'text'])
                 .default('error')
-                .description('工具路径（chatluna-character）：抛错让调用方兜底'),
+                .description('工具路径：抛错让调用方兜底'),
             service: Schema.union(['error', 'text'])
                 .default('text')
-                .description(
-                    '服务路径（chatluna 渲染器）：回纯文本，避免抛错丢整条回复'
-                ),
+                .description('chatluna 渲染器路径：回文字，避免丢回复'),
             command: Schema.union(['error', 'text'])
                 .default('text')
                 .description('指令路径')
-        }).description('降级方式'),
+        }),
         command: Schema.object({
-            maxTextChars: Schema.natural()
-                .default(2000)
-                .description('指令路径的合成字数上限')
-        }).description('指令')
-    }).description('工具调用与降级'),
+            maxTextChars: Schema.natural().default(2000).hidden()
+        })
+    }).description('工具调用与降级').collapse(),
 
     Schema.object({
         bench: Schema.object({
             enabled: Schema.boolean().default(true),
-            ladder: Schema.array(Schema.natural().min(1))
-                .default([6, 12, 24])
-                .description('长度阶梯（字）'),
-            repeat: Schema.natural()
-                .min(1)
-                .default(2)
-                .description('每档重复次数，取中位')
-        }).description('基准测试（权限固定为管理员 authority=3）')
-    }).description('基准测试'),
+            ladder: Schema.array(Schema.natural().min(1)).default([6, 12, 24]),
+            repeat: Schema.natural().min(1).default(2)
+        })
+    }).description('基准测试').collapse(),
 
     Schema.object({
         chatlunaTool: Schema.object({
             enabled: Schema.boolean().default(true),
-            name: Schema.string().default('vits_say'),
-            sendAudio: Schema.boolean()
-                .default(true)
-                .description('工具直接发送语音到会话'),
-            authority: Schema.natural()
-                .default(1)
-                .description('允许触发该工具的权限等级')
-        }).description('chatluna 工具（未安装 chatluna 时自动跳过）')
-    }).description('chatluna 工具')
+            name: Schema.string().default('vits_say').hidden(),
+            sendAudio: Schema.boolean().default(true).hidden(),
+            authority: Schema.natural().default(1).hidden()
+        })
+    }).description('chatluna 工具').collapse()
 ]) as unknown as Schema<Config>
 
 export const name = 'local-vitspro'
+
+
+
+
 
 
 

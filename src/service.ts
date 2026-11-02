@@ -36,6 +36,8 @@ const VitsBase = resolveVitsClass(VitsModule)
  */
 export class VitsProService extends VitsBase {
     readonly pipeline: Pipeline
+    /** 配置归一化时发现的问题（vitsdebug 会展示） */
+    configIssues: string[] = []
 
     constructor(
         ctx: Context,
@@ -77,3 +79,4 @@ export class VitsProService extends VitsBase {
 function toElement(element: ElementLike): h {
     return element as unknown as h
 }
+

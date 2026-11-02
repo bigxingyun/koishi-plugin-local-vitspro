@@ -121,6 +121,12 @@ export async function formatStatus(
         rows.push('自动探测：尚未完成（vitsdebug probe 可立即执行）')
     }
 
+    const issues = service.configIssues ?? []
+    if (issues.length > 0) {
+        rows.push(`配置问题（已自动修正或跳过，共 ${issues.length} 条）：`)
+        for (const issue of issues) rows.push(`· ${issue}`)
+    }
+
     if (voices.length === 0) {
         rows.push(
             service.pipeline.needsRefresh()

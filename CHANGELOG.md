@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.8 (2026-11-02)
+
+- 配置健壮性：`backends[].type` 缺失或写错时按字段推断（url / ref_audio_path / accountId / reference_id），并补齐 `enabled` / `speakers` 默认值；推断与跳过原因写日志，`vitsdebug` 可查。
+- 不再静默跳过：未知 `type` 会告警并指出后端名，缺少 `url` / `apiKey` 的条目会被剔除并说明原因，避免「0 个讲者且无报错」。
+- 设置界面精简：自动配置置顶；高级分组默认折叠；低频参数（headers、GPT 采样参数、fish 细节等）隐藏但仍可通过 YAML 配置；描述改成一句话。
+- 测试：188 个用例、15 项冒烟（新增 `tests/backend-config.test.ts`，含「漏写 type」复现用例）。
+
 ## 0.1.7 (2026-11-02)
 
 - 自动配置新增 `auto.backendTimeout`：慢机器（CPU 推理，单句几十秒）可以直接写死请求超时，避免自动模式没有 `backends[].timeout` 可用。
@@ -73,6 +80,8 @@
 - 未对真实 TTS 后端联调（开发环境无后端），请求格式按上游实现与各后端 API 对齐；
 - 不支持 gradio 后端；
 - 不支持自动翻译。
+
+
 
 
 
