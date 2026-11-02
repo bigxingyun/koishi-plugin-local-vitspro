@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.12 (2026-11-02)
+
+- 修复 `vits_say` 工具在 chatluna 后加载时**静默不注册**：`registerChatlunaTool` 改为 `ctx.inject(['chatluna'])`，不再受插件加载顺序影响。
+- 真机验证：chatluna 核心语音渲染、chatluna-character 语音渲染（`<voice>`）、character 工具调用（`vits_say`）与直接调用工具均通过。
+- 说明：chatluna 默认预设未启用工具时，模型不会看到 `vits_say`；使用带工具调用的预设（如伪装插件的「工具调用」预设）即可。
+
 ## 0.1.11 (2026-11-02)
 
 - 修复 `TypeError: Invalid content: [object Object]`：`say()` / `predict()` 改为返回 **真实的 koishi `h` Element**（`h.text` / `h.audio`），多段补发也走同一转换。此前返回的是普通 `{type, attrs, children}` 对象，satori 的 `Element.normalize` 不认。
@@ -95,6 +101,8 @@
 - 未对真实 TTS 后端联调（开发环境无后端），请求格式按上游实现与各后端 API 对齐；
 - 不支持 gradio 后端；
 - 不支持自动翻译。
+
+
 
 
 

@@ -15,8 +15,19 @@ export function registerChatlunaTool(
     service: VitsProService
 ): void {
     if (!config.chatlunaTool.enabled) return
-    if ((ctx as unknown as { chatluna?: unknown }).chatluna == null) return
 
+    // 不能只看此刻有没有 chatluna：插件加载顺序不保证 chatluna 在前。
+    // 用 inject 等 chatluna 服务就绪后再注册，否则会静默漏注册。
+    ctx.inject(['chatluna'], (ctx) => {
+        register(ctx, config, service)
+    })
+}
+
+function register(
+    ctx: Context,
+    config: Config,
+    service: VitsProService
+): void {
     const logger = ctx.logger('vitspro')
 
     void (async () => {
