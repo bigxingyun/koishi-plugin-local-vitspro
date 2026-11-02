@@ -18,10 +18,11 @@
 - 可选 chatluna 工具 `vits_say`（未安装 chatluna 时自动跳过）。
 - 后端：`vits-simple-api`、`GPT-SoVITS v2`、`fish-audio`、`QQ 声聊`。
 - 文件模式（`backendsSource: file`，默认 `data/local-vitspro/config.yml`，热更新）。
-- 101 个单元 / 功能测试（stub HTTP 校验请求格式与聚合），10 项构建产物冒烟测试。
+- 105 个单元 / 功能测试（stub HTTP 校验请求格式与聚合），10 项构建产物冒烟测试。
 
 ### 已知限制
 
 - 未对真实 TTS 后端联调（开发环境无后端），请求格式按上游实现与各后端 API 对齐；
 - 不支持 gradio 后端；
 - 不支持自动翻译。
+

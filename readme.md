@@ -133,7 +133,7 @@ plugins:
 ```bash
 npm i
 npm run typecheck   # tsc --noEmit
-npm run test        # vitest（101 个用例，纯 Node，不需要 koishi 运行时）
+npm run test        # vitest（105 个用例，纯 Node，不需要 koishi 运行时）
 npm run smoke       # 构建产物 + 真实 koishi Context 冒烟（10 项）
 npm run verify      # 以上三个一起跑
 ```
@@ -143,3 +143,4 @@ npm run verify      # 以上三个一起跑
 ## License
 
 MIT
+
