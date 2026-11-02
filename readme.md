@@ -83,9 +83,9 @@ plugins:
   local-vitspro:
     auto:
       enabled: true
-      url: http://127.0.0.1:48572   # 根地址 / …/voice/vits / …/tts 都行
-      username: user              # Basic Auth（没有就留空）
-      password: 你的密码
+      url: http://127.0.0.1:23456       # 换成你的后端地址
+      username: 用户名                   # Basic Auth（没有就留空）
+      password: 密码
       # apiKey: xxx                     # 用 X-API-KEY 的后端
       # token: xxx                      # 用 Authorization: Bearer 的后端
       # backendTimeout: 300000          # 后端很慢（CPU 推理）时直接写死请求超时
