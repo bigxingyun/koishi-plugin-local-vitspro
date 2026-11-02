@@ -1,7 +1,7 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
 import { VitsProService } from '../service'
-import { formatSeconds } from './tts'
+import { formatSeconds } from './debug'
 
 /** 与上游 `tts` 指令一致的管理员权限 */
 const AUTHORITY = 3
@@ -78,3 +78,4 @@ export function registerBench(
             return rows.join('\n')
         })
 }
+

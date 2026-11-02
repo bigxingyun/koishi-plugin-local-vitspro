@@ -112,7 +112,7 @@ async function main() {
         const names = ctx.$commander._commandList.map(
             (command) => command.name
         )
-        for (const name of ['vitspro', 'tts', 'vitsbench', 'tts.speakers']) {
+        for (const name of ['vitspro', 'vitsdebug', 'vitsbench']) {
             assert.ok(names.includes(name), `缺少指令 ${name}`)
         }
     })
@@ -153,7 +153,7 @@ async function main() {
         assert.equal(element.attrs.content.length, 2100)
     })
 
-    await check('tts off 后返回文字', async () => {
+    await check('关闭语音后返回文字', async () => {
         ctx.vits.pipeline.setEnabled(false)
         const element = await ctx.vits.say({
             input: '你好。',
@@ -234,7 +234,7 @@ async function main() {
         assert.ok(speakerCalls.length >= 1)
     })
 
-    await check('tts probe 返回诊断信息', async () => {
+    await check('vitsdebug probe 返回诊断信息', async () => {
         const probes = await ctx.vits.pipeline.probe()
         assert.equal(probes.length, 1)
         // 该后端 autoPullSpeaker=false，不应发请求
@@ -308,3 +308,4 @@ main().catch((error) => {
     console.error(error)
     process.exit(1)
 })
+

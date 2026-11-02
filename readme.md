@@ -55,7 +55,7 @@ Koishi 的多后端 TTS 聚合插件。把 `vits-simple-api`、`GPT-SoVITS（v2 
 
 每个后端一份状态机：连续失败到阈值进入 `open`，冷却后只放一个探测请求（`half-open`），成功即恢复。
 
-- `AUTH`（401/403）一次即永久熔断，`tts on` 或改配置才恢复；
+- `AUTH`（401/403）一次即永久熔断，`vitsdebug on` 或改配置才恢复；
 - `BAD_REQUEST`（400/422）不熔断，只降级并记日志；
 - 降级提示按原因 10 分钟节流；
 - 工具路径（chatluna-character）抛 `VitsDegradeError` 让调用方用解析好的文字兜底；服务路径（chatluna 渲染器）直接回纯文本，避免整条回复被 `middleware_error` 吃掉。
@@ -94,7 +94,7 @@ plugins:
 
 `url` 填根地址即可；填完整的合成端点（如 `…/voice/vits`）或带尾部 `/voice` 也会自动还原。后端很慢时加 `timeout: 300000`（毫秒）覆盖动态超时。
 
-配好后发 `tts speakers` 确认讲者，再发 `vitsbench` 让超时模型吃到真实速度。
+配好后发 `vitsdebug speakers` 确认讲者，再发 `vitsbench` 让超时模型吃到真实速度。
 
 ## 支持的后端
 
@@ -148,15 +148,17 @@ GPT-SoVITS 没有「讲者列表」接口，讲者就是一组参考音频配置
 
 | 指令 | 说明 | 权限 |
 | --- | --- | --- |
-| `vitspro <text>`（别名 `lunavits`） | 合成语音，`-s` 指定讲者 | 1 |
+| `vitspro <text>` | 合成语音，`-s` 指定讲者 | 1 |
 | `vitsbench [backend]` | 基准测速并写回超时模型，`-n` 次数、`-s` 讲者、`-r` 清样本、`-f` 清熔断 | 3 |
-| `tts` | 状态：后端、讲者数、拟合参数、熔断、建议超时 | 3 |
-| `tts on` / `tts off` | 开启并清熔断 / 临时关闭语音 | 3 |
-| `tts speakers` | 讲者列表（含 `id`），会强制重新拉取 | 3 |
-| `tts reload` | 立即重新拉取讲者列表 | 3 |
-| `tts probe [backend]` | 诊断讲者拉取：打印最终 URL、状态码、耗时、原始错误与建议 | 3 |
-| `tts debug <text>` | 打印归一化、切片、决策与超时，不发请求 | 3 |
-| `tts reset [backend]` | 清空测速样本与熔断状态 | 3 |
+| `vitsdebug` | 状态：后端、讲者数、拟合参数、熔断、建议超时 | 3 |
+| `vitsdebug on` / `vitsdebug off` | 开启并清熔断 / 临时关闭语音 | 3 |
+| `vitsdebug speakers` | 讲者列表（含 `id`），会强制重新拉取 | 3 |
+| `vitsdebug reload` | 立即重新拉取讲者列表 | 3 |
+| `vitsdebug probe [backend]` | 诊断讲者拉取：打印最终 URL、状态码、耗时、原始错误与建议 | 3 |
+| `vitsdebug text <text>` | 打印归一化、切片、决策与超时，不发请求 | 3 |
+| `vitsdebug reset [backend]` | 清空测速样本与熔断状态 | 3 |
+
+> 0.1.5 起不再注册 `tts` / `lunavits`：旧插件 `koishi-plugin-local-vits` 用的是这两个名字，同时装会冲突。升级后用 `vitspro` / `vitsdebug` / `vitsbench`。
 
 ## 与 chatluna 配合
 
@@ -168,18 +170,18 @@ GPT-SoVITS 没有「讲者列表」接口，讲者就是一组参考音频配置
 
 **后端比 Koishi 启动慢，讲者列表空着**
 
-不会。拉取失败会标记为「未拉全」并后台按 5s → 9s → 16s… 退避重试，最长 2 分钟一次；拉到即停，最多一分钟后还会自动刷新。也可以手动 `tts reload`。
+不会。拉取失败会标记为「未拉全」并后台按 5s → 9s → 16s… 退避重试，最长 2 分钟一次；拉到即停，最多一分钟后还会自动刷新。也可以手动 `vitsdebug reload`。
 
 **还是拉不到讲者，是不是协议不对**
 
-先发 `tts probe`，它会打印最终请求的 URL、状态码、耗时和原始错误。对照看：
+先发 `vitsdebug probe`，它会打印最终请求的 URL、状态码、耗时和原始错误。对照看：
 
 | probe 显示 | 多半是 |
 | --- | --- |
 | `404` | `url` 写成了 `…/voice`（会自动纠正一次）或多了别的路径；也可能这个后端不是 vits-simple-api |
 | `401 / 403` | `apiKey` 或 `username`/`password` 不对 |
 | `CONNECT` | 后端没起、端口不对、防火墙拦了 |
-| `TIMEOUT` | 后端在加载模型，等一会儿再 `tts reload` |
+| `TIMEOUT` | 后端在加载模型，等一会儿再 `vitsdebug reload` |
 | `成功 · 0 个` | 接口通了但后端没加载模型，`/voice/speakers` 本身是空的 |
 | `未请求` | 该后端 `autoPullSpeaker=false`，只能用配置里的 `speakers` |
 
@@ -187,7 +189,7 @@ GPT-SoVITS 没有「讲者列表」接口，讲者就是一组参考音频配置
 
 **没声音 / 只有文字**
 
-先发 `tts` 看后端状态与熔断；`AUTH` 熔断检查账密或 API Key；再用 `tts debug <文本>` 看决策与超时。降级时会有一次中文提示（可关）。
+先发 `vitsdebug` 看后端状态与熔断；`AUTH` 熔断检查账密或 API Key；再用 `vitsdebug text <文本>` 看决策与超时。降级时会有一次中文提示（可关）。
 
 **一句长话变成了好几条语音**
 
@@ -204,5 +206,7 @@ GPT-SoVITS 没有「讲者列表」接口，讲者就是一组参考音频配置
 ## License
 
 [MIT](./LICENSE)
+
+
 
 

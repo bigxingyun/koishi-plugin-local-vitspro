@@ -108,16 +108,17 @@ describe('Pipeline.say', () => {
         expect(calls).toHaveLength(0)
     })
 
-    it('空输入降级为文字（服务路径）', async () => {
+    it('空输入直接抛 EMPTY_TEXT（避免发出空文本元素）', async () => {
         const { pipeline, calls } = setup()
 
-        const element = await pipeline.say({
-            input: '',
-            speaker_id: 0,
-            session: { send: async () => undefined }
-        })
+        await expect(
+            pipeline.say({
+                input: '',
+                speaker_id: 0,
+                session: { send: async () => undefined }
+            })
+        ).rejects.toMatchObject({ code: 'EMPTY_TEXT' })
 
-        expect(element.type).toBe('text')
         expect(calls).toHaveLength(0)
     })
 

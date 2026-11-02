@@ -19,5 +19,12 @@ export function audioElement(data: Buffer, format = 'wav'): ElementLike {
 }
 
 export function textElement(content: string): ElementLike {
-    return { type: 'text', attrs: { content }, children: [] }
+    // 空文本会被部分平台编码器当成 undefined（onebot 的 trimEnd 崩溃），
+    // 这里用零宽空格兜底，保证 send 的永远是合法字符串。
+    const value = content == null ? '' : String(content)
+    return {
+        type: 'text',
+        attrs: { content: value.length > 0 ? value : '\u200b' },
+        children: []
+    }
 }

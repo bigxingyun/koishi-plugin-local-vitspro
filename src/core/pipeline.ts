@@ -559,7 +559,10 @@ export class Pipeline {
         await this.notify(text, code, session, scope)
 
         const action = degradeActionFor(source, this.deps.config.degrade)
-        if (action === 'error') {
+
+        // 空文本没有可发的东西：直接抛给调用方，避免发出空 text 元素
+        // （部分平台编码器会因此拿到 undefined 并崩溃）
+        if (action === 'error' || code === 'EMPTY_TEXT') {
             throw new VitsDegradeError(code, text)
         }
         return textElement(text)

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { Pipeline } from '../src/core/pipeline'
+import { textElement } from '../src/core/element'
 import type { ElementLike } from '../src/core/element'
 import {
     createStubHttp,
@@ -16,6 +17,14 @@ function audioOf(element: ElementLike): Buffer {
 }
 
 describe('Pipeline element 结构', () => {
+    it('空文本不会产出空 content（onebot 编码器会因此崩溃）', () => {
+        const element = textElement('')
+        const content = String((element.attrs as any).content ?? '')
+
+        expect(element.type).toBe('text')
+        expect(content.length).toBeGreaterThan(0)
+    })
+
     it('音频元素结构与 koishi h.audio 一致', async () => {
         const config = makeConfig({ backends: [simpleBackend()] })
         const { http } = createStubHttp()
@@ -37,3 +46,4 @@ describe('Pipeline element 结构', () => {
         expect(audioOf(element).length).toBeGreaterThan(44)
     })
 })
+

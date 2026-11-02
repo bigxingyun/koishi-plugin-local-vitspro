@@ -2,7 +2,7 @@ import { Context } from 'koishi'
 import { Config } from '../config'
 import { VitsProService } from '../service'
 import { registerVitspro } from './vitspro'
-import { registerTts } from './tts'
+import { registerDebug } from './debug'
 import { registerBench } from './bench'
 
 export function registerCommands(
@@ -11,6 +11,6 @@ export function registerCommands(
     service: VitsProService
 ): void {
     registerVitspro(ctx, service)
-    registerTts(ctx, service)
+    registerDebug(ctx, service)
     registerBench(ctx, config, service)
 }

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.5 (2026-11-02)
+
+- 修复 onebot 编码器崩溃（`Cannot read properties of undefined (reading 'trimEnd')`）：不再返回空的 text 元素；空文本（`EMPTY_TEXT`）统一抛 `VitsDegradeError`，由调用方兜底。
+- 命令重构，避免与旧插件重名：**移除 `tts` 与 `lunavits`**，新增一级指令 **`vitsdebug`**（状态 / on / off / speakers / reload / probe / text / reset），`vitspro` 与 `vitsbench` 保持不变。
+- 测试：153 个用例、13 项冒烟。
+
 ## 0.1.4 (2026-11-02)
 
 - 真机联调发现的问题修复：`url` 可以直接填完整合成端点（`…/voice/vits`、`…/voice/bert-vits2`、`…/tts`），插件会自动还原成根地址，不再拼成 `…/voice/vits/voice/speakers`。
@@ -54,6 +60,9 @@
 - 未对真实 TTS 后端联调（开发环境无后端），请求格式按上游实现与各后端 API 对齐；
 - 不支持 gradio 后端；
 - 不支持自动翻译。
+
+
+
 
 
 
