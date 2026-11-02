@@ -197,6 +197,18 @@ describe('讲者列表的启动竞态', () => {
         expect(voices).toHaveLength(0)
         expect(pipeline.needsRefresh()).toBe(false)
     })
+
+    it('讲者加载完成后会触发变更回调（控制台动态选项用）', async () => {
+        const { pipeline, state } = setup()
+        state.online = true
+
+        const seen: number[] = []
+        pipeline.onVoicesChanged = (voices) => seen.push(voices.length)
+
+        await pipeline.ensureVoices(true)
+
+        expect(seen).toEqual([1])
+    })
 })
 
 describe('RefreshLoop', () => {

@@ -97,6 +97,8 @@ export class Pipeline {
     private lastLoadAt = 0
     private loading?: Promise<void>
     private enabled = true
+    /** 讲者列表变化时的回调（插件层用来刷新控制台动态选项） */
+    onVoicesChanged?: (voices: VoiceEntry[]) => void
     /** 自动配置探测出来的后端与结果（`vitsdebug` 会展示） */
     private autoBackend?: Backend
     private autoResult?: DetectResult
@@ -343,6 +345,14 @@ export class Pipeline {
 
         this.voicesStale = stale || autoPending
         this.lastLoadAt = this.now()
+
+        try {
+            this.onVoicesChanged?.(this.voices)
+        } catch (error) {
+            this.logger.warn(
+                `[vitspro] 讲者变更回调失败：${(error as Error)?.message ?? error}`
+            )
+        }
     }
 
     /** 按 id / 完整 key / 讲者名 / 默认讲者 解析出实际讲者 */
@@ -975,6 +985,7 @@ function median(values: number[]): number {
         ? Math.round((sorted[mid - 1] + sorted[mid]) / 2)
         : Math.round(sorted[mid])
 }
+
 
 
 

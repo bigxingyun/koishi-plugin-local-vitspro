@@ -134,6 +134,12 @@ async function main() {
         assert.ok(!sent.includes('<'))
     })
 
+    await check('拉到的讲者注册为控制台动态选项', async () => {
+        const schema = ctx.schema.get('speaker')
+        assert.ok(schema, 'speaker 动态 schema 未注册')
+        assert.equal(schema('stub/测试_ZH'), 'stub/测试_ZH')
+    })
+
     await check('工具路径太短抛 VitsDegradeError', async () => {
         await assert.rejects(
             ctx.vits.say({ input: tagged('嗯'), session: {} }),
@@ -387,5 +393,6 @@ main().catch((error) => {
     console.error(error)
     process.exit(1)
 })
+
 
 

@@ -1,8 +1,9 @@
-import { Context } from 'koishi'
+import { Context, Schema } from 'koishi'
 import { readFileSync, watch } from 'node:fs'
 import { resolve } from 'node:path'
 import { Config, name } from './config'
 import { VitsProService } from './service'
+import { VoiceEntry } from './types'
 import { Backend } from './types'
 import { parseBackendsYaml } from './core/backends-file'
 import { RefreshLoop } from './core/refresh'
@@ -79,9 +80,38 @@ export function apply(ctx: Context, config: Config): void {
             ctx.effect(() => () => loop.stop())
         })
 
+        // 把拉到的讲者注册成动态 schema，控制台的 defaultSpeaker 变成下拉可选
+        service.pipeline.onVoicesChanged = (voices) => {
+            syncSpeakerSchema(ctx, voices, config.defaultSpeaker)
+        }
+        syncSpeakerSchema(
+            ctx,
+            service.pipeline.getVoices(),
+            config.defaultSpeaker
+        )
+
         registerCommands(ctx, config, service)
         registerChatlunaTool(ctx, config, service)
     })
+}
+
+/**
+ * 把当前讲者列表同步到控制台的 speaker 动态选项。
+ * 没有 schema 服务（例如独立 Context 测试）时静默跳过。
+ */
+function syncSpeakerSchema(
+    ctx: Context,
+    voices: VoiceEntry[],
+    current?: string
+): void {
+    const schema = (ctx as unknown as { schema?: any }).schema
+    if (!schema?.set || voices.length === 0) return
+
+    // 把当前配置值也并进去，避免旧配置的讲者不在列表里时保存报错
+    const keys = voices.map((voice) => voice.key)
+    if (current && !keys.includes(current)) keys.push(current)
+
+    schema.set('speaker', Schema.union(keys))
 }
 
 /**
@@ -132,6 +162,8 @@ function applyFileMode(ctx: Context, config: Config): void {
         )
     }
 }
+
+
 
 
 
