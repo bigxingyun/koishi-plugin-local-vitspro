@@ -594,10 +594,13 @@ export class Pipeline {
         if (voice.backend.timeout != null) return voice.backend.timeout
         if (timeout.mode === 'manual') return timeout.manual
 
-        const estimate = this.estimator.estimateMs(
-            this.backendKey(voice.backend),
-            chars
-        )
+        const key = this.backendKey(voice.backend)
+        // 还没有足够样本时用冷启动预算，避免第一句被兜底公式误杀
+        if (this.estimator.count(key) < 3) {
+            return Math.max(timeout.min, timeout.coldStart)
+        }
+
+        const estimate = this.estimator.estimateMs(key, chars)
         const value = timeout.overhead + timeout.factor * estimate
         return Math.round(Math.min(timeout.max, Math.max(timeout.min, value)))
     }
@@ -647,10 +650,13 @@ export class Pipeline {
         if (backend.timeout != null) return backend.timeout
         const { timeout } = this.deps.config
         if (timeout.mode === 'manual') return timeout.manual
-        const estimate = this.estimator.estimateMs(
-            this.backendKey(backend),
-            chars
-        )
+
+        const key = this.backendKey(backend)
+        if (this.estimator.count(key) < 3) {
+            return Math.max(timeout.min, timeout.coldStart)
+        }
+
+        const estimate = this.estimator.estimateMs(key, chars)
         return Math.round(
             Math.min(
                 timeout.max,

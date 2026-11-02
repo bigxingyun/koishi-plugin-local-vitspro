@@ -49,6 +49,8 @@ Koishi 的多后端 TTS 聚合插件。把 `vits-simple-api`、`GPT-SoVITS（v2 
 
 拟合结果写回内存，下一条消息立即生效。也可以用 `timeout.mode = manual` 固定超时，两者是并列模式。
 
+还没有样本的前 3 次调用会用 `timeout.coldStart`（默认 60s），避免「后端第一次加载模型慢」被误判成超时。机器特别慢（比如 CPU 跑 GPT-SoVITS，实测单句几十秒到两分钟）时，直接在对应后端写 `timeout: 300000` 覆盖，最稳。
+
 ### 5. 熔断与降级
 
 每个后端一份状态机：连续失败到阈值进入 `open`，冷却后只放一个探测请求（`half-open`），成功即恢复。
@@ -89,6 +91,8 @@ plugins:
             type: VITS
             languages: [ZH]
 ```
+
+`url` 填根地址即可；填完整的合成端点（如 `…/voice/vits`）或带尾部 `/voice` 也会自动还原。后端很慢时加 `timeout: 300000`（毫秒）覆盖动态超时。
 
 配好后发 `tts speakers` 确认讲者，再发 `vitsbench` 让超时模型吃到真实速度。
 

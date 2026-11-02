@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.4 (2026-11-02)
+
+- 真机联调发现的问题修复：`url` 可以直接填完整合成端点（`…/voice/vits`、`…/voice/bert-vits2`、`…/tts`），插件会自动还原成根地址，不再拼成 `…/voice/vits/voice/speakers`。
+- 冷启动超时：前 3 次调用用 `timeout.coldStart`（默认 60s），避免后端首次加载模型慢被误杀；慢机器可用 `backends[].timeout` 进一步覆盖。
+- 切片并发默认从 2 降到 1：单后端/慢机器上并行请求会排队并互相拖到超时，需要速度再调到 2。
+- 测试：152 个用例（新增完整端点归一化、冷启动预算、样本足够后切回公式）。
+
 ## 0.1.3 (2026-11-02)
 
 - GPT-SoVITS 完整适配：`api_v2.py` 的 `/tts` 支持 GET / POST / auto 回退；补齐官方全部常用参数（`fragment_interval` / `parallel_infer` / `repetition_penalty` / `sample_steps` / `cfg_rate` / `super_sampling` / `use_cuda_graph` 等），默认值与官方一致。
@@ -47,6 +54,7 @@
 - 未对真实 TTS 后端联调（开发环境无后端），请求格式按上游实现与各后端 API 对齐；
 - 不支持 gradio 后端；
 - 不支持自动翻译。
+
 
 
 

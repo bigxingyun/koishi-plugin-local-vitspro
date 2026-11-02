@@ -41,7 +41,8 @@ export function makeConfig(patch: Partial<Config> = {}): Config {
             factor: 2,
             min: 5000,
             max: 120000,
-            overhead: 800
+            overhead: 800,
+            coldStart: 30000
         },
         breaker: {
             mode: 'auto',
@@ -143,4 +144,5 @@ export function sentenceOfLength(length: number): string {
     while (text.length < length) text += unit
     return text.slice(0, length)
 }
+
 

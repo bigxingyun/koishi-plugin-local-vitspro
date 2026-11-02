@@ -121,6 +121,24 @@ describe('speakers URL 归一化', () => {
         expect(calls[0].url).toBe('http://127.0.0.1:23456/voice/speakers')
     })
 
+    it('url 直接填了完整合成端点时也能还原成根地址', async () => {
+        const { adapter, calls } = adapterWith((call) =>
+            call.url.endsWith('/voice/speakers')
+                ? { VITS: [{ id: 0, name: 'a', lang: ['zh'] }] }
+                : wav(0.1)
+        )
+
+        const speakers = await adapter.getSpeakers({
+            ...(simpleBackend() as any),
+            url: 'http://127.0.0.1:23456/voice/vits',
+            speakers: [],
+            autoPullSpeaker: true
+        })
+
+        expect(speakers).toHaveLength(1)
+        expect(calls[0].url).toBe('http://127.0.0.1:23456/voice/speakers')
+    })
+
     it('url 带尾部斜杠时同样归一化', async () => {
         const { adapter, calls } = adapterWith((call) =>
             call.url.endsWith('/voice/speakers') ? { VITS: [] } : wav(0.1)

@@ -137,11 +137,18 @@ export class VitsSimpleApiAdapter extends VitsAdapter {
         }
     }
 
-    /** 基础地址容错：去掉尾部斜杠，以及误填的 `/voice` 后缀 */
+    /**
+     * 基础地址容错：允许用户直接填完整的合成端点。
+     * `…/voice/vits`、`…/voice/bert-vits2`、`…/voice`、尾部斜杠都会被还原成根地址。
+     */
     protected url(base: string, path: string): string {
         const cleaned = String(base ?? '')
             .trim()
             .replace(/\/+$/, '')
+            .replace(
+                /\/voice\/(?:vits|w2v2-vits|bert-vits2|gpt-sovits|hubert-vits)$/i,
+                ''
+            )
             .replace(/\/voice$/i, '')
         return `${cleaned}${path}`
     }

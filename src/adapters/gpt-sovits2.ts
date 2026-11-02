@@ -151,7 +151,11 @@ export class GptSovits2Adapter extends VitsAdapter {
         timeout: number
     ): Promise<Buffer> {
         const method = backend.method ?? backend.config?.method ?? 'auto'
-        const base = String(backend.url ?? '').replace(/\/+$/, '')
+        // 允许直接填完整端点：…/tts 或 …/
+        const base = String(backend.url ?? '')
+            .trim()
+            .replace(/\/+$/, '')
+            .replace(/\/tts$/i, '')
         const url = `${base}${path}`
 
         const headers = this.headers(backend)

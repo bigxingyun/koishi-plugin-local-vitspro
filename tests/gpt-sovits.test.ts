@@ -93,6 +93,19 @@ describe('GPT-SoVITS v2', () => {
         expect(payload.sample_steps).toBe(32)
     })
 
+    it('URL 直接填 /tts 端点时也能正确拼接', async () => {
+        const { http, calls } = createStubHttp()
+        const adapter = new GptSovits2Adapter({ http, logger })
+
+        await adapter.synthesize({
+            ...request(),
+            backend: backend({ url: 'http://127.0.0.1:9880/tts' }),
+            speaker
+        } as any)
+
+        expect(calls[0].url).toBe('http://127.0.0.1:9880/tts')
+    })
+
     it('method=get 时用 query string，数组重复 key', async () => {
         const { http, calls } = createStubHttp()
         const adapter = new GptSovits2Adapter({ http, logger })

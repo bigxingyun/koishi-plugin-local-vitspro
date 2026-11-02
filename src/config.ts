@@ -211,6 +211,8 @@ export interface TimeoutConfig {
     min: number
     max: number
     overhead: number
+    /** 还没有测速样本时的冷启动超时 */
+    coldStart: number
 }
 
 export interface NoticeConfig {
@@ -325,8 +327,8 @@ export const Config: Schema<Config> = Schema.intersect([
             concurrency: Schema.natural()
                 .min(1)
                 .max(8)
-                .default(2)
-                .description('并行合成数')
+                .default(1)
+                .description('并行合成数；单后端/慢机器建议 1，快后端可调 2')
         }).description('切片')
     }).description('切片'),
 
@@ -360,7 +362,12 @@ export const Config: Schema<Config> = Schema.intersect([
             max: Schema.number().default(120000).description('超时上限（毫秒）'),
             overhead: Schema.number()
                 .default(800)
-                .description('固定开销（毫秒），叠加在估算值上')
+                .description('固定开销（毫秒），叠加在估算值上'),
+            coldStart: Schema.number()
+                .default(60000)
+                .description(
+                    '还没有测速样本时的冷启动超时（毫秒）；后端首次加载模型往往很慢，慢机器建议配合 backends[].timeout 使用'
+                )
         }).description('超时'),
         breaker: Schema.object({
             mode: Schema.union(['auto', 'manual', 'off'])
@@ -447,3 +454,4 @@ export const Config: Schema<Config> = Schema.intersect([
 ]) as unknown as Schema<Config>
 
 export const name = 'local-vitspro'
+

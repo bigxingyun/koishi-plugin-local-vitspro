@@ -311,13 +311,39 @@ describe('Pipeline.explain', () => {
                 factor: 2,
                 min: 5000,
                 max: 120000,
-                overhead: 800
+                overhead: 800,
+                coldStart: 30000
             }
         })
 
         const info = await pipeline.explain('你好世界')
 
         expect(info.timeout).toBe(1234)
+    })
+
+    it('没有测速样本时用冷启动预算（避免首句被误杀）', async () => {
+        const { pipeline } = setup()
+
+        const info = await pipeline.explain('你好世界')
+
+        expect(info.timeout).toBe(30000)
+    })
+
+    it('样本足够后切回动态公式', async () => {
+        const { pipeline } = setup()
+        for (const [chars, ms] of [
+            [10, 1000],
+            [20, 1800],
+            [30, 2600],
+            [40, 3400]
+        ]) {
+            pipeline.estimator.record('test:vits-simple-api', chars, ms)
+        }
+
+        const info = await pipeline.explain('你好世界')
+
+        // 4 字：a≈200 + b≈80×4 = 520 → ×2 + 800 = 1840 → 夹到下限 5000
+        expect(info.timeout).toBe(5000)
     })
 })
 
