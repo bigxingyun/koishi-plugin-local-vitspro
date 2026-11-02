@@ -74,7 +74,33 @@ npm i koishi-plugin-local-vitspro
 npm update koishi-plugin-local-vitspro
 ```
 
-### 最小配置
+### 自动配置（推荐）
+
+只填 URL 与凭证，插件自己探测后端类型与协议：
+
+```yaml
+plugins:
+  local-vitspro:
+    auto:
+      enabled: true
+      url: http://127.0.0.1:48572   # 根地址 / …/voice/vits / …/tts 都行
+      username: user              # Basic Auth（没有就留空）
+      password: 你的密码
+      # apiKey: xxx                     # 用 X-API-KEY 的后端
+      # token: xxx                      # 用 Authorization: Bearer 的后端
+```
+
+探测顺序（全部是无副作用的 GET）：`/voice/speakers` → `/openapi.json` → `/tts` → `/`。
+
+- **vits-simple-api**：识别后自动拉讲者，真正做到「只填 URL」；
+- **GPT-SoVITS v2 / v1**：能识别出版本，但它没有讲者列表接口，仍需在手动后端里为讲者配置 `ref_audio_path`（参考音频是服务端路径，无法猜）；
+- 探测结果缓存 60s；`vitsdebug` 能看到结论，`vitsdebug probe` 会逐步打印每个探测请求的 URL / 状态码 / 耗时。
+
+自动与手动可以并存：同类型同地址的手动后端存在时，自动结果不会重复添加。
+
+### 手动配置
+
+想精确控制就走手动，字段完全显式：
 
 ```yaml
 plugins:

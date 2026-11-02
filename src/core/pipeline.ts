@@ -29,6 +29,7 @@ import { decidePlan, degradeActionFor } from './plan'
 import { mapWithConcurrency, withTimeout } from './scheduler'
 import { AdapterMap, createAdapters } from '../adapters'
 import { SpeakerProbe } from '../adapters/base'
+import { DetectResult, buildAutoBackend, detectBackend } from './detect'
 import { shortFormat } from '../adapters/base'
 
 export interface PipelineDeps {
@@ -96,6 +97,10 @@ export class Pipeline {
     private lastLoadAt = 0
     private loading?: Promise<void>
     private enabled = true
+    /** 自动配置探测出来的后端与结果（`vitsdebug` 会展示） */
+    private autoBackend?: Backend
+    private autoResult?: DetectResult
+    private autoAt = 0
     /** 两次拉取讲者之间的最小间隔，避免后端不可用时每个请求都去撞 */
     private readonly voicesRetryInterval = 5000
     /** 讲者列表的过期时间：到点后自动刷新，能感知后端新增讲者 */
@@ -175,8 +180,81 @@ export class Pipeline {
         return this.voices
     }
 
+    /**
+     * 自动配置：探测一次并缓存（TTL 与讲者列表一致）。
+     * 只在开启了 `auto.enabled` 且有 url 时生效；失败不抛。
+     */
+    private async ensureAuto(): Promise<void> {
+        const auto = this.deps.config.auto
+        if (!auto || !auto.enabled || !String(auto.url ?? '').trim()) return
+        if (this.autoAt > 0 && this.now() - this.autoAt < this.voicesTtl) return
+
+        this.autoAt = this.now()
+
+        try {
+            const result = await detectBackend(this.deps.http, auto)
+            this.autoResult = result
+            this.autoBackend = buildAutoBackend(auto, result)
+
+            if (result.ok) {
+                this.logger.info(
+                    `[vitspro] 自动探测：${result.kind} · ${result.baseUrl}`
+                )
+            } else {
+                this.logger.warn(
+                    `[vitspro] 自动探测失败：${result.hint ?? '未知原因'}（vitsdebug probe 看细节）`
+                )
+            }
+        } catch (error) {
+            this.autoResult = undefined
+            this.autoBackend = undefined
+            this.logger.warn(
+                `[vitspro] 自动探测出错：${(error as Error)?.message ?? error}`
+            )
+        }
+    }
+
+    /** 手动后端 + 自动探测出的后端（同类型同地址去重） */
+    private allBackends(): Backend[] {
+        const manual = this.deps.backends()
+        if (!this.autoBackend) return manual
+
+        const sameUrl = (left?: string, right?: string) =>
+            String(left ?? '')
+                .trim()
+                .toLowerCase()
+                .replace(/\/+$/, '') ===
+            String(right ?? '')
+                .trim()
+                .toLowerCase()
+                .replace(/\/+$/, '')
+
+        const exists = manual.some(
+            (item) =>
+                item.type === this.autoBackend!.type &&
+                sameUrl((item as any).url, (this.autoBackend as any).url)
+        )
+
+        return exists ? manual : [...manual, this.autoBackend]
+    }
+
+    /** 自动探测结果（给 vitsdebug 展示） */
+    getAutoResult(): DetectResult | undefined {
+        return this.autoResult
+    }
+
+    /** 立即跑一次协议探测（不写缓存），供 vitsdebug probe 使用 */
+    async detect(): Promise<DetectResult | undefined> {
+        const auto = this.deps.config.auto
+        if (!auto || !auto.enabled || !String(auto.url ?? '').trim()) return undefined
+        return detectBackend(this.deps.http, auto)
+    }
+
     private async loadVoices(): Promise<void> {
-        const backends = this.deps.backends().filter((item) => item.enabled !== false)
+        await this.ensureAuto()
+        const backends = this.allBackends().filter(
+            (item) => item.enabled !== false
+        )
         const collected = new Map<string, VoiceEntry>()
         let stale = false
 
@@ -621,7 +699,8 @@ export class Pipeline {
 
     async status(): Promise<BackendStatus[]> {
         const voices = await this.ensureVoices()
-        const backends = this.deps.backends().filter(
+        await this.ensureAuto()
+        const backends = this.allBackends().filter(
             (item) => item.enabled !== false
         )
 
@@ -676,7 +755,8 @@ export class Pipeline {
      * 只诊断，不改缓存（刷新请用 `tts reload`）。
      */
     async probe(label?: string): Promise<SpeakerProbe[]> {
-        const backends = this.deps.backends().filter(
+        await this.ensureAuto()
+        const backends = this.allBackends().filter(
             (backend) =>
                 backend.enabled !== false &&
                 (label == null ||
@@ -702,9 +782,10 @@ export class Pipeline {
         speakerName?: string,
         repeat?: number
     ): Promise<BenchReport[]> {
+        await this.ensureAuto()
         const repeatCount = Math.max(1, repeat ?? this.deps.config.bench.repeat)
         const voices = await this.ensureVoices()
-        const backends = this.deps.backends().filter(
+        const backends = this.allBackends().filter(
             (item) =>
                 item.enabled !== false &&
                 (label == null ||
@@ -804,7 +885,7 @@ export class Pipeline {
     }
 
     reset(backendLabel?: string): void {
-        const backends = this.deps.backends()
+        const backends = this.allBackends()
         const targets =
             backendLabel == null
                 ? backends
@@ -866,6 +947,11 @@ function median(values: number[]): number {
         ? Math.round((sorted[mid - 1] + sorted[mid]) / 2)
         : Math.round(sorted[mid])
 }
+
+
+
+
+
 
 
 

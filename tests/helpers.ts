@@ -12,6 +12,16 @@ export const silentLogger: LoggerLike = {
 export function makeConfig(patch: Partial<Config> = {}): Config {
     const base: Config = {
         defaultSpeaker: '',
+        auto: {
+            enabled: false,
+            url: '',
+            label: '自动',
+            username: '',
+            password: '',
+            apiKey: '',
+            token: '',
+            timeout: 5000
+        },
         backendsSource: 'schema',
         backendsFile: '',
         backends: [],
@@ -144,5 +154,6 @@ export function sentenceOfLength(length: number): string {
     while (text.length < length) text += unit
     return text.slice(0, length)
 }
+
 
 

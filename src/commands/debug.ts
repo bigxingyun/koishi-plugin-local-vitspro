@@ -1,4 +1,5 @@
 import { Context } from 'koishi'
+import { Config } from '../config'
 import { VitsProService } from '../service'
 
 /** 与上游 `tts` 指令一致的管理员权限 */
@@ -15,7 +16,11 @@ const HELP = [
     '  vitsdebug reset [后端]    清空测速样本与熔断状态'
 ].join('\n')
 
-export function registerDebug(ctx: Context, service: VitsProService): void {
+export function registerDebug(
+    ctx: Context,
+    config: Config,
+    service: VitsProService
+): void {
     ctx.command(
         'vitsdebug [action:string] [arg:text]',
         'TTS 调试与状态：状态 / 开关 / 讲者 / probe / 决策 / 重置',
@@ -24,7 +29,7 @@ export function registerDebug(ctx: Context, service: VitsProService): void {
         const value = (action ?? '').trim().toLowerCase()
 
         if (!value || value === 'status' || value === '状态') {
-            return formatStatus(service)
+            return formatStatus(service, config)
         }
 
         if (value === 'on' || value === '开') {
@@ -66,7 +71,7 @@ export function registerDebug(ctx: Context, service: VitsProService): void {
         }
 
         if (value === 'probe') {
-            return formatProbe(await service.pipeline.probe(arg?.trim() || undefined))
+            return formatProbe(config, service, arg?.trim() || undefined)
         }
 
         if (value === 'text' || value === 'debug') {
@@ -90,7 +95,8 @@ export function registerDebug(ctx: Context, service: VitsProService): void {
 }
 
 export async function formatStatus(
-    service: VitsProService
+    service: VitsProService,
+    config?: Config
 ): Promise<string> {
     const enabled = service.pipeline.isEnabled()
     const voices = await service.pipeline.ensureVoices()
@@ -100,6 +106,20 @@ export async function formatStatus(
         `TTS 状态：${enabled ? '正常' : '已手动关闭（vitsdebug on 恢复）'}`,
         `讲者总数：${voices.length}`
     ]
+
+    const auto = service.pipeline.getAutoResult()
+    if (auto) {
+        rows.push(
+            `自动探测：${auto.ok ? auto.kind : '失败'} · ${auto.baseUrl}` +
+                (auto.ok
+                    ? auto.kind === 'vits-simple-api'
+                        ? ` · ${auto.speakers?.length ?? 0} 个讲者`
+                        : ''
+                    : ` · ${auto.hint ?? ''}`)
+        )
+    } else if (config?.auto?.enabled && config.auto.url) {
+        rows.push('自动探测：尚未完成（vitsdebug probe 可立即执行）')
+    }
 
     if (voices.length === 0) {
         rows.push(
@@ -135,13 +155,39 @@ export async function formatStatus(
 }
 
 async function formatProbe(
-    probes: Awaited<ReturnType<VitsProService['pipeline']['probe']>>
+    config: Config,
+    service: VitsProService,
+    label?: string
 ): Promise<string> {
-    if (probes.length === 0) {
-        return '没有匹配的后端（检查 label 或后端是否已启用）。'
+    const rows: string[] = []
+
+    // 自动配置：先跑一遍协议探测，把每一步都打出来
+    if (config.auto?.enabled && config.auto.url) {
+        const result = await service.pipeline.detect()
+        if (!result) {
+            return '自动探测未执行：检查 auto.enabled 与 auto.url。'
+        }
+        rows.push(
+            `自动探测：${result.ok ? result.kind : '失败'} · ${result.baseUrl}`
+        )
+        for (const step of result.probes) {
+            rows.push(
+                `  · ${step.name} GET ${step.url} → ${
+                    step.status ?? 'ERR'
+                } ${step.ok ? '✓' : '✗'} ${step.ms}ms`
+            )
+        }
+        if (result.hint) rows.push(`  提示：${result.hint}`)
+        rows.push('')
     }
 
-    const rows = [`讲者探测（${probes.length} 个后端）`]
+    const probes = await service.pipeline.probe(label)
+    if (probes.length === 0) {
+        rows.push('没有匹配的后端（检查 label、自动探测结果或后端是否已启用）。')
+        return rows.join('\n')
+    }
+
+    rows.push(`讲者探测（${probes.length} 个后端）`)
 
     for (const probe of probes) {
         rows.push(`· ${probe.label}（${probe.type}）`)
@@ -209,3 +255,7 @@ function truncate(text: string, max = 80): string {
     const value = String(text ?? '').replace(/\s+/g, ' ').trim()
     return value.length > max ? `${value.slice(0, max)}…` : value
 }
+
+
+
+

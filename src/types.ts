@@ -201,6 +201,19 @@ export interface ChatlunaToolConfig {
     authority: number
 }
 
+/** 自动配置：只填 URL 与凭证，协议/后端类型靠探测 */
+export interface AutoConfig {
+    enabled: boolean
+    url: string
+    label: string
+    username: string
+    password: string
+    apiKey: string
+    token: string
+    /** 探测请求超时（毫秒） */
+    timeout: number
+}
+
 /** 熔断配置（Breaker 的构造参数，也出现在 Config 里） */
 export interface BreakerConfig {
     mode: BreakerMode

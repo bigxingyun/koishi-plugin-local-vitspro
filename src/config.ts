@@ -5,6 +5,7 @@ import {
     BreakerConfig,
     BreakerMode,
     BreakerScope,
+    AutoConfig,
     ChatlunaToolConfig,
     DegradeAction,
     DegradeCode,
@@ -243,6 +244,7 @@ export interface BenchConfig {
 
 export interface Config {
     defaultSpeaker: string
+    auto: AutoConfig
     backendsSource: 'schema' | 'file'
     backendsFile: string
     backends: Backend[]
@@ -279,6 +281,39 @@ export const Config: Schema<Config> = Schema.intersect([
                 '后端列表。同一份配置里可以放多个后端，讲者 key 会带上后端名去重'
             )
     }).description('基础'),
+
+    Schema.object({
+        auto: Schema.object({
+            enabled: Schema.boolean()
+                .default(false)
+                .description('开启后只需填 url 与凭证，自动探测后端类型与协议'),
+            url: Schema.string()
+                .role('link')
+                .description(
+                    '后端地址：根地址或完整端点都行（…/voice/vits、…/tts、…/voice 会自动还原）'
+                ),
+            label: Schema.string()
+                .default('自动')
+                .description('自动后端的展示名'),
+            username: Schema.string().description(
+                'HTTP Basic Auth 用户名（vits-simple-api 开了认证时填）'
+            ),
+            password: Schema.string()
+                .role('secret')
+                .description('HTTP Basic Auth 密码'),
+            apiKey: Schema.string()
+                .role('secret')
+                .description('X-API-KEY（部分后端用这个）'),
+            token: Schema.string()
+                .role('secret')
+                .description('Authorization: Bearer <token>'),
+            timeout: Schema.number()
+                .default(5000)
+                .description('单个探测请求的超时（毫秒）')
+        }).description(
+            '自动配置（只填 URL 与凭证；检测到 vits-simple-api 会自动拉讲者。GPT-SoVITS 仍需在手动后端里配参考音频）'
+        )
+    }).description('自动配置'),
 
     Schema.object({
         text: Schema.object({
@@ -454,4 +489,5 @@ export const Config: Schema<Config> = Schema.intersect([
 ]) as unknown as Schema<Config>
 
 export const name = 'local-vitspro'
+
 

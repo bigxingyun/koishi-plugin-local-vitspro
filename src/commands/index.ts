@@ -11,6 +11,7 @@ export function registerCommands(
     service: VitsProService
 ): void {
     registerVitspro(ctx, service)
-    registerDebug(ctx, service)
+    registerDebug(ctx, config, service)
     registerBench(ctx, config, service)
 }
+

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.6 (2026-11-02)
+
+- 新增**自动配置**：只需填 `auto.url` + 可选凭证，插件按 `/voice/speakers` → `/openapi.json` → `/tts` → `/` 的顺序探测协议，自动识别 `vits-simple-api`、GPT-SoVITS v2 / v1，并自动拉取 vits-simple-api 的讲者。
+- 自动与手动配置并存（同类型同地址去重）；`vitsdebug` 展示自动探测结论，`vitsdebug probe` 逐步打印探测请求。
+- 凭证支持 HTTP Basic、`X-API-KEY`、`Authorization: Bearer`。
+- 测试：172 个用例、14 项冒烟（新增 `tests/detect.test.ts`）。
+
 ## 0.1.5 (2026-11-02)
 
 - 修复 onebot 编码器崩溃（`Cannot read properties of undefined (reading 'trimEnd')`）：不再返回空的 text 元素；空文本（`EMPTY_TEXT`）统一抛 `VitsDegradeError`，由调用方兜底。
@@ -60,6 +67,8 @@
 - 未对真实 TTS 后端联调（开发环境无后端），请求格式按上游实现与各后端 API 对齐；
 - 不支持 gradio 后端；
 - 不支持自动翻译。
+
+
 
 
 

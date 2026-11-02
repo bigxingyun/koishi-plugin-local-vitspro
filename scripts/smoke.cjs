@@ -299,6 +299,44 @@ async function main() {
         assert.equal(post.body.media_type, 'wav')
     })
 
+    await check('自动配置：只填 URL 就能识别协议并拉讲者', async () => {
+        const autoCtx = new Context()
+
+        autoCtx.set('http', {
+            get: async (url) => {
+                if (url.endsWith('/voice/speakers')) {
+                    return { VITS: [{ id: 0, name: '银狼', lang: ['zh'] }] }
+                }
+                const error = new Error('not found')
+                error.status = 404
+                throw error
+            },
+            post: async () => silenceWav()
+        })
+
+        autoCtx.plugin(
+            plugin,
+            plugin.Config({
+                auto: {
+                    enabled: true,
+                    url: 'http://auto.local:23456',
+                    username: 'u',
+                    password: 'p'
+                }
+            })
+        )
+
+        await new Promise((resolve) => setTimeout(resolve, 300))
+
+        const voices = await autoCtx.vits.pipeline.refreshVoices()
+        assert.equal(voices.length, 1)
+        assert.equal(voices[0].key, '自动/银狼_ZH')
+
+        const result = autoCtx.vits.pipeline.getAutoResult()
+        assert.ok(result, '没有产生自动探测结果')
+        assert.equal(result.kind, 'vits-simple-api')
+    })
+
     console.log(`\n全部通过：${passed} 项`)
     if (typeof ctx.scope?.dispose === 'function') ctx.scope.dispose()
     process.exit(0)
@@ -308,4 +346,5 @@ main().catch((error) => {
     console.error(error)
     process.exit(1)
 })
+
 
