@@ -90,8 +90,15 @@ export class Pipeline {
     private readonly now: () => number
     private voices: VoiceEntry[] = []
     private voicesLoaded = false
+    /** 有后端没拉全（后端还没启动 / 拉取失败）→ 需要后台重试 */
+    private voicesStale = false
+    private lastLoadAt = 0
     private loading?: Promise<void>
     private enabled = true
+    /** 两次拉取讲者之间的最小间隔，避免后端不可用时每个请求都去撞 */
+    private readonly voicesRetryInterval = 5000
+    /** 讲者列表的过期时间：到点后自动刷新，能感知后端新增讲者 */
+    private readonly voicesTtl = 60000
 
     constructor(private readonly deps: PipelineDeps) {
         this.logger = deps.logger
@@ -113,7 +120,42 @@ export class Pipeline {
     // -----------------------------------------------------------------------
 
     async ensureVoices(force = false): Promise<VoiceEntry[]> {
-        if (this.voicesLoaded && !force) return this.voices
+        if (this.loading) {
+            await this.loading
+            return this.voices
+        }
+
+        const now = this.now()
+        const withinCooldown =
+            this.voicesLoaded && now - this.lastLoadAt < this.voicesRetryInterval
+        const mustRefresh =
+            !this.voicesLoaded ||
+            this.voicesStale ||
+            now - this.lastLoadAt > this.voicesTtl
+
+        // 冷却期内一律用缓存：后端不可用时不会每个请求都去撞
+        if (withinCooldown) return this.voices
+        if (!mustRefresh && !force) return this.voices
+
+        this.loading = this.loadVoices()
+        try {
+            await this.loading
+        } finally {
+            this.loading = undefined
+        }
+        return this.voices
+    }
+
+    /** 讲者列表是否还没拉全（给后台重试与状态提示用） */
+    needsRefresh(): boolean {
+        return !this.voicesLoaded || this.voicesStale || this.voices.length === 0
+    }
+
+    /**
+     * 用户显式触发的刷新（`tts reload` / `tts speakers` / 后台重试循环）：
+     * 跳过 5s 冷却，立即重新拉取。
+     */
+    async refreshVoices(): Promise<VoiceEntry[]> {
         if (this.loading) {
             await this.loading
             return this.voices
@@ -135,22 +177,34 @@ export class Pipeline {
     private async loadVoices(): Promise<void> {
         const backends = this.deps.backends().filter((item) => item.enabled !== false)
         const collected = new Map<string, VoiceEntry>()
+        let stale = false
 
         for (const backend of backends) {
             const adapter = this.adapters[backend.type]
             if (!adapter) continue
 
+            const wantsPull =
+                adapter.autoPull && backend.autoPullSpeaker !== false
             let speakers: SpeakerBase[] = []
+            let failed = false
+
             try {
                 speakers = await adapter.getSpeakers(backend)
             } catch (error) {
+                failed = true
+                speakers = backend.speakers ?? []
                 this.logger.warn(
                     `[vitspro] 拉取 ${
                         backend.label ?? backend.type
-                    } 讲者失败：${(error as Error)?.message ?? error}`
+                    } 讲者失败（后端可能还没启动）：${
+                        (error as Error)?.message ?? error
+                    }`
                 )
-                speakers = backend.speakers ?? []
             }
+
+            // 需要自动拉取却一个都没拿到：视为「还没就绪」，保留后台重试
+            if (wantsPull && speakers.length === 0) failed = true
+            if (failed) stale = true
 
             const backendLabel = backend.label ?? backend.type
 
@@ -187,6 +241,8 @@ export class Pipeline {
 
         this.voices = list
         this.voicesLoaded = true
+        this.voicesStale = stale || (list.length === 0 && backends.length > 0)
+        this.lastLoadAt = this.now()
     }
 
     /** 按 id / 完整 key / 讲者名 / 默认讲者 解析出实际讲者 */
@@ -208,6 +264,21 @@ export class Pipeline {
         }
 
         return voices[0]
+    }
+
+    /**
+     * 讲者可能因为「后端比 Koishi 启动慢」而暂时为空：
+     * 解析失败时强制刷新一次（受 5s 冷却保护），再解析一次。
+     */
+    private async resolveVoiceWithRetry(
+        speakerId?: number,
+        speakerName?: string
+    ): Promise<VoiceEntry | undefined> {
+        const voice = await this.resolveVoice(speakerId, speakerName)
+        if (voice) return voice
+
+        await this.ensureVoices(true)
+        return this.resolveVoice(speakerId, speakerName)
     }
 
     // -----------------------------------------------------------------------
@@ -237,7 +308,7 @@ export class Pipeline {
             )
         }
 
-        const voice = await this.resolveVoice(
+        const voice = await this.resolveVoiceWithRetry(
             options.speaker_id,
             undefined
         )
@@ -248,7 +319,10 @@ export class Pipeline {
     async synthesize(text: string, options: SynthesizeOptions = {}): Promise<ElementLike> {
         const normalized = normalize(text, this.deps.config.text)
         const source: Source = options.source ?? 'command'
-        const voice = await this.resolveVoice(undefined, options.speaker)
+        const voice = await this.resolveVoiceWithRetry(
+            undefined,
+            options.speaker
+        )
         return this.synthesizeNormalized(
             normalized.text,
             source,

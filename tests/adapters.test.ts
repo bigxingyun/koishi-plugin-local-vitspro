@@ -91,6 +91,38 @@ describe('VitsSimpleApiAdapter', () => {
             { name: '派蒙', id: 0, type: 'VITS', languages: ['ZH'] }
         ])
     })
+
+    it('后端未启动时 getSpeakers 抛错（交给 Pipeline 重试，不要静默吞掉）', async () => {
+        const { http } = createStubHttp(() => {
+            const error = new Error('connect refused') as Error & {
+                code: string
+            }
+            error.code = 'ECONNREFUSED'
+            throw error
+        })
+        const adapter = new VitsSimpleApiAdapter({ http, logger })
+
+        await expect(
+            adapter.getSpeakers({
+                ...(simpleBackend() as any),
+                speakers: [],
+                autoPullSpeaker: true
+            })
+        ).rejects.toThrow('connect refused')
+    })
+
+    it('autoPullSpeaker=false 时完全不请求', async () => {
+        const { http, calls } = createStubHttp()
+        const adapter = new VitsSimpleApiAdapter({ http, logger })
+
+        const speakers = await adapter.getSpeakers({
+            ...(simpleBackend() as any),
+            autoPullSpeaker: false
+        })
+
+        expect(calls).toHaveLength(0)
+        expect(speakers).toHaveLength(1)
+    })
 })
 
 describe('GptSovits2Adapter', () => {

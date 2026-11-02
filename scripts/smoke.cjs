@@ -182,8 +182,61 @@ async function main() {
         assert.match(status[0].state, /closed|half-open|open/)
     })
 
+    await check('后端晚于 Koishi 启动：讲者列表能补拉', async () => {
+        const late = new Context()
+        let online = false
+        const speakerCalls = []
+
+        late.set('http', {
+            get: async (url) => {
+                if (!url.endsWith('/voice/speakers')) return {}
+                speakerCalls.push(url)
+                if (!online) {
+                    const error = new Error('connect refused')
+                    error.code = 'ECONNREFUSED'
+                    throw error
+                }
+                return { VITS: [{ name: '派蒙', id: 0, lang: ['zh'] }] }
+            },
+            post: async () => silenceWav()
+        })
+
+        late.plugin(
+            plugin,
+            plugin.Config({
+                backends: [
+                    {
+                        type: 'vits-simple-api',
+                        label: 'late',
+                        url: 'http://127.0.0.1:1',
+                        autoPullSpeaker: true,
+                        speakers: []
+                    }
+                ]
+            })
+        )
+
+        await new Promise((resolve) => setTimeout(resolve, 300))
+
+        assert.equal(
+            late.vits.pipeline.needsRefresh(),
+            true,
+            '空讲者列表必须标记为待重试'
+        )
+        assert.equal(late.vits.pipeline.getVoices().length, 0)
+
+        online = true
+        const voices = await late.vits.pipeline.refreshVoices()
+
+        assert.equal(voices.length, 1)
+        assert.equal(voices[0].key, 'late/派蒙_ZH')
+        assert.equal(late.vits.pipeline.needsRefresh(), false)
+        assert.ok(speakerCalls.length >= 1)
+    })
+
     console.log(`\n全部通过：${passed} 项`)
     if (typeof ctx.scope?.dispose === 'function') ctx.scope.dispose()
+    process.exit(0)
 }
 
 main().catch((error) => {

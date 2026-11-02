@@ -28,21 +28,39 @@ export function registerTts(ctx: Context, service: VitsProService): void {
         return [
             `未知操作：${action}`,
             '可用：tts / tts on / tts off',
-            '　　　tts speakers / tts debug <text> / tts reset [后端]'
+            '　　　tts speakers / tts reload / tts debug <text> / tts reset [后端]'
         ].join('\n')
     })
 
     ctx.command('tts.speakers', '列出可用讲者', {
         authority: AUTHORITY
     }).action(async () => {
-        const voices = await service.pipeline.ensureVoices(true)
-        if (voices.length === 0) return '没有可用讲者，请先配置后端。'
+        const voices = await service.pipeline.refreshVoices()
+        if (voices.length === 0) {
+            return [
+                '没有可用讲者：后端可能还没启动，或讲者配置为空。',
+                '已开启后台自动重试（5s 起、最多 2 分钟一次），也可以稍后发 tts reload 立即重试。'
+            ].join('\n')
+        }
 
         const rows = voices.map(
             (voice) =>
                 `[${voice.id}] ${voice.key}（${voice.backend.type}）`
         )
         return [`共 ${voices.length} 个讲者：`, ...rows].join('\n')
+    })
+
+    ctx.command('tts.reload', '立即重新拉取讲者列表', {
+        authority: AUTHORITY
+    }).action(async () => {
+        const voices = await service.pipeline.refreshVoices()
+        if (voices.length === 0) {
+            return '还是没有拉到讲者：确认后端已启动、`url` 与鉴权配置正确。'
+        }
+        const hint = service.pipeline.needsRefresh()
+            ? '（部分后端仍未拉全）'
+            : ''
+        return `已重新拉取：${voices.length} 个讲者${hint}。`
     })
 
     ctx.command('tts.debug <text:text>', '查看归一化/切片/决策结果（不发请求）', {
@@ -89,6 +107,14 @@ export async function formatStatus(service: VitsProService): Promise<string> {
         `讲者总数：${voices.length}`
     ]
 
+    if (voices.length === 0) {
+        rows.push(
+            '讲者列表为空：后端可能还没启动，后台正在自动重试（tts reload 可立即重试）。'
+        )
+    } else if (service.pipeline.needsRefresh()) {
+        rows.push('部分后端的讲者还没拉全，后台正在自动重试（tts reload 可立即重试）。')
+    }
+
     if (list.length === 0) {
         rows.push('没有启用中的后端。')
         return rows.join('\n')
@@ -119,3 +145,4 @@ function truncate(text: string, max = 80): string {
     const value = String(text ?? '').replace(/\s+/g, ' ').trim()
     return value.length > max ? `${value.slice(0, max)}…` : value
 }
+

@@ -27,6 +27,9 @@ export interface SynthesizeRequest {
 export abstract class VitsAdapter {
     abstract readonly type: Backend['type']
 
+    /** 该后端是否支持从远端自动拉取讲者（用于判断「没拉到」是不是异常） */
+    readonly autoPull: boolean = false
+
     constructor(protected readonly ctx: AdapterContext) {}
 
     abstract synthesize(request: SynthesizeRequest): Promise<AudioResult>

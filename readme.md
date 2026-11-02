@@ -67,6 +67,18 @@ plugins:
 
 > 文件模式只读自己的路径，**不会**读取旧插件（luna-vits / local-vits）的 `data/local-vits/`，也不提供旧配置迁移。
 
+## 启动顺序（后端比 Koishi 启动慢）
+
+TTS 后端经常比 Koishi 晚几十秒才监听端口，所以：
+
+- 插件加载时会拉一次讲者；**拉不到不会把空列表当成成功**，而是标记为「未拉全」；
+- 之后按 5s → 9s → 16s… 指数退避在后台重试，最长 2 分钟一次，拉到即停；
+- 讲者列表还有 60s 的 TTL：后端新增了讲者，最多一分钟后自动生效；
+- 真实消息进来时如果还没有讲者，会先强制刷新一次（5s 冷却），仍拿不到才降级为文字；
+- 手动补拉：`tts reload` / `tts speakers`（`authority: 3`）。
+
+日志里会看到 `讲者列表还没拉全（TTS 后端可能尚未启动），N 秒后重试`，后端起来后变成 `讲者列表已就绪：N 个`。
+
 ## 指令
 
 | 指令 | 说明 | 权限 |
@@ -75,7 +87,8 @@ plugins:
 | `vitsbench [backend]` | 基准测速，`-n` 每档次数、`-s` 讲者、`-r` 清样本、`-f` 清熔断 | 3 |
 | `tts` | 状态：后端、讲者数、拟合参数、熔断、建议超时 | 3 |
 | `tts on` / `tts off` / `tts 开` / `tts 关` | 开启并清熔断 / 临时关闭语音 | 3 |
-| `tts speakers` | 讲者列表（含 `id`） | 3 |
+| `tts speakers` | 讲者列表（含 `id`），会强制重新拉取 | 3 |
+| `tts reload` | 立即重新拉取讲者列表（后端刚启动时用） | 3 |
 | `tts debug <text>` | 打印归一化、切片、决策与超时，**不发请求** | 3 |
 | `tts reset [backend]` | 清空测速样本与熔断状态 | 3 |
 
@@ -133,8 +146,8 @@ plugins:
 ```bash
 npm i
 npm run typecheck   # tsc --noEmit
-npm run test        # vitest（105 个用例，纯 Node，不需要 koishi 运行时）
-npm run smoke       # 构建产物 + 真实 koishi Context 冒烟（10 项）
+npm run test        # vitest（117 个用例，纯 Node，不需要 koishi 运行时）
+npm run smoke       # 构建产物 + 真实 koishi Context 冒烟（11 项）
 npm run verify      # 以上三个一起跑
 ```
 
@@ -143,4 +156,5 @@ npm run verify      # 以上三个一起跑
 ## License
 
 MIT
+
 

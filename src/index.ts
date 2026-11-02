@@ -5,6 +5,7 @@ import { Config, name } from './config'
 import { VitsProService } from './service'
 import { Backend } from './types'
 import { parseBackendsYaml } from './core/backends-file'
+import { RefreshLoop } from './core/refresh'
 import { registerCommands } from './commands'
 import { registerChatlunaTool } from './chatluna/tool'
 
@@ -28,17 +29,42 @@ export function apply(ctx: Context, config: Config): void {
         const service = ctx.vits as unknown as VitsProService
         const logger = ctx.logger('vitspro')
 
+        // TTS 后端经常比 Koishi 启动慢：拉不到讲者时后台按退避重试，
+        // 拉到就停，插件卸载时定时器随 ctx 一起回收。
         ctx.on('ready', () => {
-            void service.pipeline
-                .ensureVoices(true)
-                .then(() => {
-                    logger.info(
-                        `已加载 ${service.pipeline.getVoices().length} 个讲者`
+            const loop = new RefreshLoop({
+                initialDelay: 5000,
+                maxDelay: 120000,
+                attempt: async () => {
+                    const voices = await service.pipeline.refreshVoices()
+                    if (
+                        voices.length > 0 &&
+                        !service.pipeline.needsRefresh()
+                    ) {
+                        logger.info(
+                            `讲者列表已就绪：${voices.length} 个`
+                        )
+                        return true
+                    }
+                    return false
+                },
+                schedule: (task, delay) => ctx.setTimeout(task, delay),
+                onRetry: (delay) => {
+                    logger.warn(
+                        `讲者列表还没拉全（TTS 后端可能尚未启动），${Math.round(
+                            delay / 1000
+                        )} 秒后重试`
                     )
-                })
-                .catch((error) => {
-                    logger.warn(`加载讲者失败：${(error as Error)?.message ?? error}`)
-                })
+                },
+                onError: (error) => {
+                    logger.warn(
+                        `加载讲者失败：${(error as Error)?.message ?? error}`
+                    )
+                }
+            })
+
+            loop.start()
+            ctx.effect(() => () => loop.stop())
         })
 
         registerCommands(ctx, config, service)
@@ -80,7 +106,7 @@ function applyFileMode(ctx: Context, config: Config): void {
                 config.backends = next
                 logger.info(`后端配置已热更新（${next.length} 个）`)
                 const service = (ctx as unknown as { vits?: VitsProService }).vits
-                void service?.pipeline.ensureVoices(true)
+                void service?.pipeline.refreshVoices()
             }, 300)
             void reload
         })
@@ -94,5 +120,8 @@ function applyFileMode(ctx: Context, config: Config): void {
         )
     }
 }
+
+
+
 
 

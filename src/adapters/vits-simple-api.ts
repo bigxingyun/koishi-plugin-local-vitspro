@@ -74,6 +74,7 @@ const MIME_BY_EXT: Record<string, string> = {
 
 export class VitsSimpleApiAdapter extends VitsAdapter {
     readonly type = 'vits-simple-api' as const
+    readonly autoPull = true
 
     constructor(ctx: AdapterContext) {
         super(ctx)
@@ -139,38 +140,32 @@ export class VitsSimpleApiAdapter extends VitsAdapter {
         const configured = simple.speakers ?? []
         if (simple.autoPullSpeaker === false) return configured
 
-        try {
-            const url = this.url(simple.url, '/voice/speakers')
-            const response = (await this.ctx.http.get(url, {
-                headers: this.buildHeaders(simple),
-                timeout: simple.timeout ?? 15000
-            })) as Record<
-                string,
-                { name: string; id: number; languages?: string[]; lang?: string[] }[]
-            >
+        // 失败不吞：抛给 Pipeline，由它标记「讲者列表未拉全」并后台重试
+        const url = this.url(simple.url, '/voice/speakers')
+        const response = (await this.ctx.http.get(url, {
+            headers: this.buildHeaders(simple),
+            timeout: simple.timeout ?? 15000
+        })) as Record<
+            string,
+            { name: string; id: number; languages?: string[]; lang?: string[] }[]
+        >
 
-            const pulled: SpeakerBase[] = []
-            for (const [type, list] of Object.entries(response ?? {})) {
-                if (type === 'HUBERT-VITS' || !Array.isArray(list)) continue
-                for (const item of list) {
-                    pulled.push({
-                        name: item.name,
-                        id: item.id,
-                        type,
-                        languages: (item.languages ?? item.lang ?? []).map(
-                            (lang) => String(lang).toUpperCase()
-                        )
-                    })
-                }
+        const pulled: SpeakerBase[] = []
+        for (const [type, list] of Object.entries(response ?? {})) {
+            if (type === 'HUBERT-VITS' || !Array.isArray(list)) continue
+            for (const item of list) {
+                pulled.push({
+                    name: item.name,
+                    id: item.id,
+                    type,
+                    languages: (item.languages ?? item.lang ?? []).map(
+                        (lang) => String(lang).toUpperCase()
+                    )
+                })
             }
-
-            return [...configured, ...pulled]
-        } catch (error) {
-            this.ctx.logger.warn(
-                `[vits-simple-api] 拉取讲者失败：${(error as Error)?.message ?? error}`
-            )
-            return configured
         }
+
+        return [...configured, ...pulled]
     }
 
     private buildHeaders(backend: VitsSimpleApiBackend): Record<string, string> {
