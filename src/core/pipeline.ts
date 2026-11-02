@@ -105,6 +105,8 @@ export class Pipeline {
     private readonly voicesRetryInterval = 5000
     /** 讲者列表的过期时间：到点后自动刷新，能感知后端新增讲者 */
     private readonly voicesTtl = 60000
+    /** 自动探测失败后的重试间隔 */
+    private readonly autoRetryInterval = 10000
 
     constructor(private readonly deps: PipelineDeps) {
         this.logger = deps.logger
@@ -187,7 +189,13 @@ export class Pipeline {
     private async ensureAuto(): Promise<void> {
         const auto = this.deps.config.auto
         if (!auto || !auto.enabled || !String(auto.url ?? '').trim()) return
-        if (this.autoAt > 0 && this.now() - this.autoAt < this.voicesTtl) return
+
+        // 探测成功缓存久一点；失败则短间隔重试，配合后台重试循环
+        const ttl =
+            this.autoResult && !this.autoResult.ok
+                ? this.autoRetryInterval
+                : this.voicesTtl
+        if (this.autoAt > 0 && this.now() - this.autoAt < ttl) return
 
         this.autoAt = this.now()
 
@@ -320,7 +328,13 @@ export class Pipeline {
 
         this.voices = list
         this.voicesLoaded = true
-        this.voicesStale = stale
+        const auto = this.deps.config.auto
+        const autoPending =
+            !!auto?.enabled &&
+            !!String(auto.url ?? '').trim() &&
+            !this.autoResult?.ok
+
+        this.voicesStale = stale || autoPending
         this.lastLoadAt = this.now()
     }
 
@@ -947,6 +961,8 @@ function median(values: number[]): number {
         ? Math.round((sorted[mid - 1] + sorted[mid]) / 2)
         : Math.round(sorted[mid])
 }
+
+
 
 
 

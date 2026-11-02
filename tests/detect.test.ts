@@ -351,4 +351,52 @@ describe('Pipeline 自动配置', () => {
 
         expect(calls.some((call) => call.url.includes('openapi'))).toBe(false)
     })
+
+    it('自动探测失败会标记未拉全，后端恢复后能补上', async () => {
+        const state = { online: false, t: 0 }
+        const config = makeConfig({
+            auto: autoConfig({ url: 'http://127.0.0.1:23456' }),
+            backends: []
+        })
+
+        const http: HttpClient = {
+            async get(url: string) {
+                if (url.endsWith('/voice/speakers')) {
+                    if (state.online) {
+                        return {
+                            VITS: [{ id: 0, name: '银狼', lang: ['zh'] }]
+                        }
+                    }
+                }
+                const error = new Error('refused') as Error & {
+                    status: number
+                }
+                error.status = 404
+                throw error
+            },
+            async post() {
+                throw new Error('not expected')
+            }
+        }
+
+        const pipeline = new Pipeline({
+            http,
+            logger: silentLogger,
+            config,
+            backends: () => config.backends,
+            now: () => state.t
+        })
+
+        expect(await pipeline.ensureVoices()).toHaveLength(0)
+        expect(pipeline.needsRefresh()).toBe(true)
+
+        state.online = true
+        state.t += 11000
+
+        const voices = await pipeline.ensureVoices(true)
+
+        expect(voices).toHaveLength(1)
+        expect(voices[0].key).toBe('自动/银狼_ZH')
+        expect(pipeline.needsRefresh()).toBe(false)
+    })
 })
