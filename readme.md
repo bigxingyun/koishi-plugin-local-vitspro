@@ -5,7 +5,7 @@
 [![license](https://img.shields.io/npm/l/koishi-plugin-local-vitspro)](https://github.com/bigxingyun/koishi-plugin-local-vitspro/blob/main/LICENSE)
 [![stars](https://img.shields.io/github/stars/bigxingyun/koishi-plugin-local-vitspro)](https://github.com/bigxingyun/koishi-plugin-local-vitspro)
 
-Koishi 的多后端 TTS 聚合插件。把 `vits-simple-api`、`GPT-SoVITS v2`、`fish-audio`、`QQ 声聊` 收进同一个 `vits` 服务，供 [chatluna](https://github.com/ChatLunaLab/chatluna)、[chatluna-character](https://github.com/ChatLunaLab/chatluna-character) 直接调用。
+Koishi 的多后端 TTS 聚合插件。把 `vits-simple-api`、`GPT-SoVITS（v2 / v1）`、`fish-audio`、`QQ 声聊` 收进同一个 `vits` 服务，供 [chatluna](https://github.com/ChatLunaLab/chatluna)、[chatluna-character](https://github.com/ChatLunaLab/chatluna-character) 直接调用。
 
 它重点解决三件事：
 
@@ -97,11 +97,48 @@ plugins:
 | 后端 | 必填 | 说明 |
 | --- | --- | --- |
 | `vits-simple-api` | `url` | 支持 `X-API-KEY`、HTTP Basic Auth、自动拉取讲者（`/voice/speakers`） |
-| `GPT-SoVITS2` | `url` | `/tts` v2 接口，按需切换 GPT / SoVITS 底模 |
+| `GPT-SoVITS2` | `url` + 讲者 `ref_audio_path` | 同时支持 `api_v2.py`（`/tts`）与老版 `api.py`（`/`），可切换 GPT / SoVITS 底模 |
 | `fish-audio` | `apiKey` | 云端服务，按 `reference_id` 选音色 |
 | `qq-voice` | `accountId` | QQ 声聊，仅群聊，依赖 OneBot |
 
 讲者条目可以写任意额外参数（`noise`、`noise_w`、`length`、`sdp_ratio`、`preset`、`prompt_text`、`speed` 等），会透传给对应后端。
+
+### GPT-SoVITS 配置
+
+GPT-SoVITS 没有「讲者列表」接口，讲者就是一组参考音频配置。`ref_audio_path` 必须是**后端机器上的路径**，不是你本地的。
+
+```yaml
+- type: GPT-SoVITS2
+  label: 丛雨
+  url: http://127.0.0.1:9880
+  apiVersion: v2          # v2=api_v2.py（默认）；v1=老版 api.py
+  method: auto            # auto=先 POST，405/404 回退 GET；也可 get / post
+  config:                 # 全局默认请求参数，讲者里可覆盖
+    text_split_method: cut5
+    batch_size: 1
+    top_k: 15
+    top_p: 1
+    temperature: 1
+  speakers:
+    - name: 丛雨
+      ref_audio_path: audio/mur001_062.ogg   # 服务端路径
+      aux_ref_audio_paths: []
+      prompt_text: ほれ、吾輩の言った通りであろう？
+      prompt_lang: ja
+      text_lang: zh
+      gpt_weights: GPT_SoVITS/pretrained_models/xxx.ckpt   # 可选，切换底模
+      sovits_weights: SoVITS_weights_v2/xxx.pth            # 可选
+      languages: [ZH, EN, JA]   # 可选：按语言生成多个讲者 key（丛雨_ZH、丛雨_EN…）
+```
+
+对得上官方 `api_v2.py` 的参数：`top_k` / `top_p` / `temperature` / `text_split_method` / `batch_size` / `batch_threshold` / `split_bucket` / `speed_factor` / `fragment_interval` / `seed` / `media_type` / `streaming_mode` / `parallel_infer` / `repetition_penalty` / `sample_steps` / `cfg_rate` / `super_sampling` / `use_cuda_graph`，默认值与官方一致。
+
+几个容易踩的点：
+
+- 失败时官方返回 **HTTP 400 + JSON**（`message` / `Exception`），插件会把这段内容拼进错误信息，方便直接定位；
+- `media_type: raw` 没有音频头，无法与其他段拼接，建议用 `wav`；
+- 老版 `api.py`（`apiVersion: v1`）的参数名是 `refer_wav_path` / `prompt_language` / `text_language` / `inp_refs` / `speed`，插件会自动映射，且 **v1 没有底模切换接口**，`gpt_weights` / `sovits_weights` 会被忽略；
+- 如果是 vits-simple-api，它自带 `/voice/speakers`，不需要手写讲者。
 
 ## 指令
 
@@ -163,4 +200,5 @@ plugins:
 ## License
 
 [MIT](./LICENSE)
+
 

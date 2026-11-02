@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.3 (2026-11-02)
+
+- GPT-SoVITS 完整适配：`api_v2.py` 的 `/tts` 支持 GET / POST / auto 回退；补齐官方全部常用参数（`fragment_interval` / `parallel_infer` / `repetition_penalty` / `sample_steps` / `cfg_rate` / `super_sampling` / `use_cuda_graph` 等），默认值与官方一致。
+- 新增老版 `api.py` 支持（`apiVersion: v1`）：自动映射 `refer_wav_path` / `prompt_language` / `text_language` / `inp_refs` / `speed`，且不会调用不存在的底模切换接口。
+- 必填字段前置校验（`ref_audio_path` / `prompt_lang` / `text_lang`），缺字段直接报参数错误，不再把无效请求打给后端。
+- 解析官方 400 的 JSON 错误体（`message` / `Exception`）并拼进错误信息；`auto` 模式仅在 405/404/501 时回退另一种 HTTP 方法。
+- 讲者支持 `languages`（按语言生成多个 key）与 `speed` 旧写法；`top_k` 默认值对齐官方 15。
+- 测试：148 个用例、13 项冒烟（新增 `tests/gpt-sovits.test.ts`）。
+
 ## 0.1.2 (2026-11-02)
 
 - 讲者拉取排障：新增 `tts probe`，打印最终 URL、状态码、耗时、原始错误与可操作提示。
@@ -38,5 +47,6 @@
 - 未对真实 TTS 后端联调（开发环境无后端），请求格式按上游实现与各后端 API 对齐；
 - 不支持 gradio 后端；
 - 不支持自动翻译。
+
 
 

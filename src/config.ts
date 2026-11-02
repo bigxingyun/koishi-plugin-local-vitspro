@@ -48,25 +48,31 @@ const VitsSimpleApiSpeaker = Schema.object({
 
 const GptSovits2Speaker = Schema.object({
     ...BaseSpeaker,
-    gpt_weights: Schema.string().description('GPT 底模路径，不填则不切换'),
-    sovits_weights: Schema.string().description('SoVITS 底模路径，不填则不切换'),
-    ref_audio_path: Schema.string().description('参考音频路径（服务端）'),
+    gpt_weights: Schema.string().description('GPT 底模路径（服务端），不填则不切换'),
+    sovits_weights: Schema.string().description('SoVITS 底模路径（服务端），不填则不切换'),
+    ref_audio_path: Schema.string().description(
+        '参考音频路径（服务端；v2 必填，v1 即 refer_wav_path）'
+    ),
     aux_ref_audio_paths: Schema.array(Schema.string())
         .default([])
-        .description('辅助参考音频路径'),
+        .description('辅助参考音频路径（v1 即 inp_refs）'),
     prompt_text: Schema.string().description('参考文本'),
     prompt_lang: Schema.string().default('zh').description('参考文本语言'),
-    text_lang: Schema.string().description('合成语言，不填则跟随 key 后缀'),
-    text_split_method: Schema.string()
-        .default('cut5')
-        .description('后端自带切句方法'),
-    batch_size: Schema.number().default(1),
-    speed_factor: Schema.number().description('语速'),
+    text_lang: Schema.string().description('合成语言，不填则跟随 key 后缀 / 默认 zh'),
+    languages: Schema.array(Schema.string())
+        .default([])
+        .description('该讲者支持的语言；填了会按语言生成多个讲者 key（如 丛雨_ZH）'),
+    text_split_method: Schema.string().description('后端自带切句方法，默认 cut5'),
+    batch_size: Schema.number(),
+    speed_factor: Schema.number().description('语速（v1 用 speed）'),
+    speed: Schema.number().description('语速（v1）'),
     top_k: Schema.number(),
     top_p: Schema.number(),
     temperature: Schema.number(),
-    media_type: Schema.string().default('wav')
-}).description('GPT-SoVITS v2 讲者')
+    sample_steps: Schema.number().description('采样步数（v3/v4 模型）'),
+    cfg_rate: Schema.number().description('cfg 强度（v3/v4 模型）'),
+    media_type: Schema.string().default('wav').description('wav 最稳，raw 无头')
+}).description('GPT-SoVITS 讲者')
 
 const FishAudioSpeaker = Schema.object({
     ...BaseSpeaker,
@@ -105,10 +111,16 @@ const VitsSimpleApiBackend = Schema.object({
 }).description('vits-simple-api')
 
 const GptSovits2Backend = Schema.object({
-    type: Schema.const('GPT-SoVITS2').description('GPT-SoVITS v2'),
+    type: Schema.const('GPT-SoVITS2').description('GPT-SoVITS'),
     label: Schema.string().description('展示名'),
     enabled: Schema.boolean().default(true),
     url: Schema.string().required().description('服务地址，如 http://127.0.0.1:9880'),
+    apiVersion: Schema.union(['v2', 'v1'])
+        .default('v2')
+        .description('v2=api_v2.py（/tts）；v1=老版 api.py（/）'),
+    method: Schema.union(['auto', 'get', 'post'])
+        .default('auto')
+        .description('auto=先 POST，405/404 时回退 GET'),
     timeout: Schema.number().description('后端级超时（毫秒）'),
     headers: Schema.dict(Schema.string()).default({}).description('附加请求头'),
     config: Schema.object({
@@ -117,17 +129,27 @@ const GptSovits2Backend = Schema.object({
         batch_threshold: Schema.number().default(0.75),
         split_bucket: Schema.boolean().default(true),
         speed_factor: Schema.number().default(1),
-        top_k: Schema.number().default(5),
+        fragment_interval: Schema.number().default(0.3),
+        top_k: Schema.number().default(15),
         top_p: Schema.number().default(1),
         temperature: Schema.number().default(1),
         seed: Schema.number().default(-1),
         media_type: Schema.string().default('wav'),
-        streaming_mode: Schema.boolean().default(false)
+        streaming_mode: Schema.boolean().default(false),
+        parallel_infer: Schema.boolean().default(true),
+        use_cuda_graph: Schema.boolean().default(true),
+        repetition_penalty: Schema.number().default(1.35),
+        sample_steps: Schema.number().description('v3/v4 采样步数'),
+        cfg_rate: Schema.number().description('v3/v4 cfg 强度'),
+        super_sampling: Schema.boolean().default(false),
+        cut_punc: Schema.string().description('v1 切句标点'),
+        speed: Schema.number().description('v1 语速'),
+        if_sr: Schema.boolean().description('v1 超分')
     })
         .description('全局默认请求参数（讲者里可覆盖）')
         .default({} as never),
     speakers: Schema.array(GptSovits2Speaker).default([])
-}).description('GPT-SoVITS v2')
+}).description('GPT-SoVITS（v2 / v1）')
 
 const FishAudioBackend = Schema.object({
     type: Schema.const('fish-audio').description('fish-audio'),

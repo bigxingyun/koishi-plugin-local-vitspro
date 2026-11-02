@@ -243,6 +243,62 @@ async function main() {
         assert.match(probes[0].hint, /autoPullSpeaker/)
     })
 
+    await check('GPT-SoVITS 后端走 /tts 并返回音频', async () => {
+        const gsv = new Context()
+        const gsvCalls = []
+
+        gsv.set('http', {
+            get: async (url) => {
+                gsvCalls.push({ method: 'GET', url })
+                return { message: 'success' }
+            },
+            post: async (url, body) => {
+                gsvCalls.push({ method: 'POST', url, body })
+                return silenceWav()
+            }
+        })
+
+        gsv.plugin(
+            plugin,
+            plugin.Config({
+                backends: [
+                    {
+                        type: 'GPT-SoVITS2',
+                        label: 'gsv',
+                        url: 'http://127.0.0.1:9880',
+                        speakers: [
+                            {
+                                name: '丛雨',
+                                ref_audio_path: 'audio/ref.ogg',
+                                prompt_text: 'ほれ',
+                                prompt_lang: 'ja',
+                                text_lang: 'zh'
+                            }
+                        ]
+                    }
+                ]
+            })
+        )
+
+        await new Promise((resolve) => setTimeout(resolve, 300))
+
+        const element = await gsv.vits.say({
+            input: '你好。',
+            session: { send: async () => undefined }
+        })
+
+        assert.equal(element.type, 'audio')
+
+        const post = gsvCalls.find((call) => call.method === 'POST')
+        assert.ok(post, '没有发出 POST /tts')
+        assert.equal(post.url, 'http://127.0.0.1:9880/tts')
+        assert.equal(post.body.ref_audio_path, 'audio/ref.ogg')
+        assert.equal(post.body.prompt_lang, 'ja')
+        assert.equal(post.body.text_lang, 'zh')
+        assert.equal(post.body.streaming_mode, false)
+        assert.equal(post.body.media_type, 'wav')
+    })
+
     console.log(`\n全部通过：${passed} 项`)
     if (typeof ctx.scope?.dispose === 'function') ctx.scope.dispose()
     process.exit(0)

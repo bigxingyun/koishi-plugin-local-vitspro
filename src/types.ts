@@ -71,22 +71,47 @@ export interface VitsSimpleApiBackend extends BackendBase {
 }
 
 export interface GptSovits2Params {
+    /** v2: /tts；v1: /（老版 api.py，参数名不同） */
+    apiVersion?: 'v2' | 'v1'
+    /** auto=先 POST，405/404 时回退 GET；也可强制 get / post */
+    method?: 'auto' | 'get' | 'post'
     text_split_method?: string
     batch_size?: number
     batch_threshold?: number
     split_bucket?: boolean
     speed_factor?: number
+    fragment_interval?: number
     top_k?: number
     top_p?: number
     temperature?: number
     seed?: number
     media_type?: string
-    streaming_mode?: boolean
+    streaming_mode?: boolean | number
+    parallel_infer?: boolean
+    repetition_penalty?: number
+    sample_steps?: number
+    cfg_rate?: number
+    super_sampling?: boolean
+    use_cuda_graph?: boolean
+    /** v1 专用 */
+    cut_punc?: string
+    speed?: number
+    if_sr?: boolean
+    /** v2 流式参数 */
+    overlap_length?: number
+    min_chunk_length?: number
+    gpt_streaming?: boolean
+    streaming_chunk_seconds?: number
+    streaming_window_mode?: string
 }
 
 export interface GptSovits2Backend extends BackendBase {
     type: 'GPT-SoVITS2'
     url: string
+    /** v2=api_v2.py（/tts）；v1=老版 api.py（/） */
+    apiVersion?: 'v2' | 'v1'
+    /** auto=先 POST，405/404 时回退 GET */
+    method?: 'auto' | 'get' | 'post'
     config?: GptSovits2Params
 }
 

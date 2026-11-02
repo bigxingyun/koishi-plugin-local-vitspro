@@ -204,7 +204,10 @@ describe('GptSovits2Adapter', () => {
         const speaker = {
             name: '丛雨',
             sovits_weights: 'a.pth',
-            gpt_weights: 'b.ckpt'
+            gpt_weights: 'b.ckpt',
+            ref_audio_path: 'audio/ref.ogg',
+            prompt_text: 'ほれ',
+            prompt_lang: 'jp'
         }
 
         await adapter.synthesize({
