@@ -5,11 +5,13 @@ import {
     SpeakerBase
 } from '../types'
 import { parseSpeakersResponse } from '../adapters/vits-simple-api'
+import { parseSpeakers as parseGsvSpeakers } from '../adapters/gsv-api'
 
 export type DetectKind =
     | 'vits-simple-api'
     | 'gpt-sovits-v2'
     | 'gpt-sovits-v1'
+    | 'gsv-api'
     | 'unknown'
 
 export interface DetectProbe {
@@ -131,6 +133,26 @@ export async function detectBackend(
         }
     }
 
+    // 0) GSV 工作台公开 API v1：/v1/health 永远公开，用来优先识别
+    const health = await probe('GSV 健康检查', '/v1/health')
+    if (health.probe.ok && looksLikeGsvHealth(health.response.data)) {
+        const list = await probe('GSV 角色列表', '/v1/speakers')
+        const speakers = list.probe.ok
+            ? parseGsvSpeakers(list.response.data)
+            : []
+        return {
+            ok: true,
+            kind: 'gsv-api',
+            baseUrl,
+            probes,
+            speakers,
+            hint:
+                speakers.length > 0
+                    ? undefined
+                    : '已识别 GSV API，但 /v1/speakers 没有启用角色（检查服务端工作台）'
+        }
+    }
+
     // 1) vits-simple-api：/voice/speakers 返回按模型类型分组的 JSON
     const speakersProbe = await probe('讲者列表', '/voice/speakers')
     if (speakersProbe.probe.ok) {
@@ -239,6 +261,23 @@ export function buildAutoBackend(
         }
     }
 
+    if (result.kind === 'gsv-api') {
+        return {
+            type: 'gsv-api',
+            label,
+            enabled: true,
+            url: result.baseUrl,
+            apiKey: auto.apiKey || auto.token || undefined,
+            authMode: 'bearer',
+            format: 'wav',
+            autoPullSpeaker: true,
+            ...(auto.backendTimeout > 0
+                ? { timeout: auto.backendTimeout }
+                : {}),
+            speakers: result.speakers ?? []
+        }
+    }
+
     if (result.kind === 'gpt-sovits-v2' || result.kind === 'gpt-sovits-v1') {
         return {
             type: 'GPT-SoVITS2',
@@ -257,12 +296,12 @@ export function buildAutoBackend(
 function readStatus(value: unknown): number | undefined {
     if (!value || typeof value !== 'object') return undefined
     const anyValue = value as any
-    return (
+    const raw =
         anyValue.status ??
         anyValue.statusCode ??
-        anyValue.response?.status ??
-        undefined
-    )
+        anyValue.response?.status
+    const status = Number(raw)
+    return Number.isFinite(status) ? status : undefined
 }
 
 function looksLikeSpeakers(data: unknown, speakers: SpeakerBase[]): boolean {
@@ -283,6 +322,10 @@ function looksLikeSpeakers(data: unknown, speakers: SpeakerBase[]): boolean {
 
 function classifyPaths(paths: string[]): DetectKind {
     if (paths.length === 0) return 'unknown'
+
+    if (paths.some((path) => path.startsWith('/v1/audio/speech'))) {
+        return 'gsv-api'
+    }
 
     if (
         paths.some((path) => path.startsWith('/voice/vits')) ||
@@ -310,7 +353,20 @@ function classifyPaths(paths: string[]): DetectKind {
     return 'unknown'
 }
 
+export function looksLikeGsvHealth(data: unknown): boolean {
+    if (!data || typeof data !== 'object') return false
+    const value = data as Record<string, unknown>
+    return (
+        value.api_version != null ||
+        value.status === 'ok' ||
+        (value.object === 'list' && Array.isArray(value.data))
+    )
+}
+
 function gptHint(kind: DetectKind): string {
     return `已识别 GPT-SoVITS ${kind === 'gpt-sovits-v1' ? 'v1（老版 api.py）' : 'v2（api_v2.py）'}；它没有讲者列表，需要在手动后端里为讲者配置 ref_audio_path（参考音频，服务端路径）`
 }
+
+
+
 

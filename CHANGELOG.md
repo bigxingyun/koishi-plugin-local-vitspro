@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.14 (2026-11-08)
+
+- 新增后端 `gsv-api`：适配 GSV 工作台的 v1 公开 API（`/v1/health`、`/v1/speakers`、`/v1/audio/speech`）。
+  - 请求体只发 `text` / `speaker` / `emotion` / `language` / `format`，不会带模型或参考音频字段。
+  - 鉴权支持 `Authorization: Bearer`、`X-API-Key`、两种都发。
+  - 角色从 `/v1/speakers` 自动拉取（带 `id` / `emotions` / `default_emotion` / `status`），停用角色自动过滤。
+  - 错误体 `{ error: { code, message } }` 会带进日志；`speaker` 强制用角色 id。
+- 自动探测新增 `gsv-api`：优先看 `/v1/health`，OpenAPI 里出现 `/v1/audio/speech` 也能识别。
+- 修复探测层 `status` 字段被当成 HTTP 状态码的问题（GSV 健康检查的 `status: "ok"` 曾导致误判）。
+
 ## 0.1.13 (2026-11-02)
 
 - 新增指令级选择：`vitspro <文本> -m` 长文本切分后**分多条语音发送**；`-c` 强制**拼成一条长语音**。不传时仍由 `aggregate.type` 决定。
@@ -106,6 +116,8 @@
 - 未对真实 TTS 后端联调（开发环境无后端），请求格式按上游实现与各后端 API 对齐；
 - 不支持 gradio 后端；
 - 不支持自动翻译。
+
+
 
 
 

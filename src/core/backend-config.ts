@@ -17,6 +17,9 @@ const TYPE_ALIASES: Record<string, Backend['type']> = {
     'gpt-sovits-v2': 'GPT-SoVITS2',
     'gpt-sovits-v1': 'GPT-SoVITS2',
     sovits: 'GPT-SoVITS2',
+    'gsv-api': 'gsv-api',
+    gsv: 'gsv-api',
+    'gsv-v1': 'gsv-api',
     'fish-audio': 'fish-audio',
     fish: 'fish-audio',
     'fish_audio': 'fish-audio',
@@ -57,6 +60,9 @@ export function inferBackendType(
     if (item.accountId != null) return 'qq-voice'
     if (item.baseUrl != null || firstSpeaker.reference_id != null) {
         return 'fish-audio'
+    }
+    if (item.url != null && /\/v1(\/|$)/.test(String(item.url))) {
+        return 'gsv-api'
     }
     if (item.url != null) return 'vits-simple-api'
 
@@ -105,7 +111,11 @@ export function normalizeBackends(
 
         const url = typeof item.url === 'string' ? item.url.trim() : ''
 
-        if (inferred === 'vits-simple-api' || inferred === 'GPT-SoVITS2') {
+        if (
+            inferred === 'vits-simple-api' ||
+            inferred === 'GPT-SoVITS2' ||
+            inferred === 'gsv-api'
+        ) {
             if (!url) {
                 issues.push(`${position}（${inferred}）：缺少 url，已跳过`)
                 return
@@ -127,3 +137,4 @@ export function normalizeBackends(
 
     return { backends, issues }
 }
+

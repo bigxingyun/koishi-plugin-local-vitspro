@@ -310,6 +310,75 @@ async function main() {
         assert.equal(post.body.media_type, 'wav')
     })
 
+    await check('GSV API v1 走 /v1/speakers 与 /v1/audio/speech', async () => {
+        const gsvApi = new Context()
+        const calls = []
+
+        gsvApi.set('http', {
+            get: async (url, config) => {
+                calls.push({ method: 'GET', url, headers: config?.headers })
+                if (url.endsWith('/v1/speakers')) {
+                    return {
+                        object: 'list',
+                        api_version: '1.0',
+                        data: [
+                            {
+                                id: 'yinlang',
+                                name: '银狼',
+                                enabled: true,
+                                emotions: ['平静'],
+                                default_emotion: '平静',
+                                languages: ['zh'],
+                                status: 'ready'
+                            }
+                        ]
+                    }
+                }
+                const error = new Error('not found')
+                error.status = 404
+                throw error
+            },
+            post: async (url, body, config) => {
+                calls.push({ method: 'POST', url, body, headers: config?.headers })
+                return silenceWav()
+            }
+        })
+
+        gsvApi.plugin(
+            plugin,
+            plugin.Config({
+                backends: [
+                    {
+                        type: 'gsv-api',
+                        label: '工作台',
+                        url: 'http://127.0.0.1:9880',
+                        apiKey: 'secret'
+                    }
+                ]
+            })
+        )
+
+        await new Promise((resolve) => setTimeout(resolve, 300))
+
+        const voices = await gsvApi.vits.pipeline.refreshVoices()
+        assert.equal(voices.length, 1)
+        assert.match(voices[0].key, /银狼/)
+
+        const element = await gsvApi.vits.say({
+            input: '你好。',
+            session: { send: async () => undefined }
+        })
+        assert.equal(element.type, 'audio')
+
+        const post = calls.find((call) => call.method === 'POST')
+        assert.ok(post, '没有发出 POST /v1/audio/speech')
+        assert.equal(post.url, 'http://127.0.0.1:9880/v1/audio/speech')
+        assert.equal(post.body.speaker, 'yinlang')
+        assert.equal(post.body.format, 'wav')
+        assert.equal(post.body.ref_audio_path, undefined)
+        assert.equal(post.headers.Authorization, 'Bearer secret')
+    })
+
     await check('自动配置：只填 URL 就能识别协议并拉讲者', async () => {
         const autoCtx = new Context()
 

@@ -95,6 +95,16 @@ const QQVoiceSpeaker = Schema.object({
     characterId: Schema.string().required().description('QQ 声聊角色 id')
 }).description('QQ 声聊讲者')
 
+const GsvApiSpeaker = Schema.object({
+    ...BaseSpeaker,
+    id: Schema.string().required().description(
+        '角色 ID（/v1/speakers 返回的 id，不是显示名）'
+    ),
+    emotion: Schema.string().description('默认情绪，留空用服务端默认'),
+    languages: Schema.array(Schema.string())
+        .default([])
+        .description('支持的语言，如 ZH / EN / JA')
+}).description('GSV API 角色')
 // ---------------------------------------------------------------------------
 // 后端
 // ---------------------------------------------------------------------------
@@ -175,9 +185,36 @@ const QQVoiceBackend = Schema.object({
     speakers: Schema.array(QQVoiceSpeaker).default([])
 }).description('QQ 声聊')
 
+const GsvApiBackend = Schema.object({
+    type: Schema.const('gsv-api').description('GSV API v1'),
+    label: Schema.string().description('展示名'),
+    enabled: Schema.boolean().default(true),
+    url: Schema.string()
+        .required()
+        .description('API 地址，如 http://127.0.0.1:9880（不是工作台 9881）'),
+    apiKey: Schema.string()
+        .role('secret')
+        .description('访问密钥；留空表示服务端未开启鉴权'),
+    authMode: Schema.union(['bearer', 'x-api-key', 'both'])
+        .default('bearer')
+        .description('密钥放在 Authorization: Bearer 还是 X-API-Key'),
+    format: Schema.union(['wav', 'ogg'])
+        .default('wav')
+        .description('输出格式；wav 才能多段拼接，ogg 只能分条发'),
+    language: Schema.string().description(
+        '默认语种（zh/en/ja/yue/ko/auto），留空由服务端按参考音频决定'
+    ),
+    timeout: Schema.number().description('后端级超时（毫秒）'),
+    autoPullSpeaker: Schema.boolean()
+        .default(true)
+        .description('从 /v1/speakers 自动拉取角色'),
+    headers: Schema.dict(Schema.string()).default({}).hidden(),
+    speakers: Schema.array(GsvApiSpeaker).default([])
+}).description('GSV API v1（/v1/audio/speech）')
 export const backendSchema: Schema<Backend> = Schema.union([
     VitsSimpleApiBackend,
     GptSovits2Backend,
+    GsvApiBackend,
     FishAudioBackend,
     QQVoiceBackend
 ]) as unknown as Schema<Backend>
@@ -449,6 +486,7 @@ export const Config: Schema<Config> = Schema.intersect([
 ]) as unknown as Schema<Config>
 
 export const name = 'local-vitspro'
+
 
 
 

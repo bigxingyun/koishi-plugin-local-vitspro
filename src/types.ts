@@ -115,6 +115,28 @@ export interface GptSovits2Backend extends BackendBase {
     config?: GptSovits2Params
 }
 
+/** GSV 工作台自带的 v1 公开 API：角色/情绪由服务端管理 */
+export interface GsvApiSpeaker extends SpeakerBase {
+    /** /v1/speakers 返回的角色 id，调用 speech 时用它而不是显示名 */
+    id?: string
+    emotions?: string[]
+    defaultEmotion?: string
+    status?: string
+}
+
+export interface GsvApiBackend extends BackendBase {
+    type: 'gsv-api'
+    /** 例如 http://127.0.0.1:9880 */
+    url: string
+    apiKey?: string
+    /** 密钥放哪个头：bearer / x-api-key / both */
+    authMode?: 'bearer' | 'x-api-key' | 'both'
+    /** 输出格式：wav 可拼接；ogg 不能拼 */
+    format?: 'wav' | 'ogg'
+    /** 默认语种，留空由服务端按参考音频决定 */
+    language?: string
+}
+
 export interface FishAudioBackend extends BackendBase {
     type: 'fish-audio'
     /** 默认 https://api.fish.audio */
@@ -130,6 +152,7 @@ export interface QQVoiceBackend extends BackendBase {
 export type Backend =
     | VitsSimpleApiBackend
     | GptSovits2Backend
+    | GsvApiBackend
     | FishAudioBackend
     | QQVoiceBackend
 
@@ -231,5 +254,6 @@ export interface BreakerConfig {
     cooldown: number
     maxCooldown: number
 }
+
 
 

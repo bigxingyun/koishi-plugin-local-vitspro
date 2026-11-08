@@ -196,13 +196,28 @@ export function wrapError(error: unknown, label: string): BackendError {
     const status: number | undefined =
         err?.status ?? err?.response?.status ?? undefined
     const errorClass = classifyError(error)
-    const detail =
-        err?.response?.data && typeof err.response.data === 'string'
-            ? err.response.data.slice(0, 120)
-            : ''
+    const responseData = err?.response?.data
+    let detail = ''
+
+    if (typeof responseData === 'string') {
+        detail = responseData.slice(0, 120)
+    } else if (responseData && typeof responseData === 'object') {
+        // GSV v1 / 其它后端都会返回 { error: { code, message } }
+        const body = ((responseData as any).error ?? responseData) as Record<
+            string,
+            unknown
+        >
+        const code = body?.code ?? body?.Exception
+        const text = body?.message ?? body?.detail
+        detail = [code, text]
+            .filter((item) => item != null && String(item).trim())
+            .join(': ')
+            .slice(0, 160)
+    }
     const message = `[${label}] ${errorClass}${status ? ` ${status}` : ''}${
         detail ? `: ${detail}` : ''
     }${err?.message ? ` (${String(err.message).slice(0, 120)})` : ''}`
 
     return new BackendError(errorClass, message, status, { cause: error })
 }
+

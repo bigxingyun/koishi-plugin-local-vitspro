@@ -133,6 +133,7 @@ plugins:
 | --- | --- | --- |
 | `vits-simple-api` | `url` | 支持 `X-API-KEY`、HTTP Basic Auth、自动拉取讲者（`/voice/speakers`） |
 | `GPT-SoVITS2` | `url` + 讲者 `ref_audio_path` | 同时支持 `api_v2.py`（`/tts`）与老版 `api.py`（`/`），可切换 GPT / SoVITS 底模 |
+| `gsv-api` | `url` | GSV 工作台自带的 v1 公开 API（`/v1/health`、`/v1/speakers`、`/v1/audio/speech`），角色/情绪由服务端管理 |
 | `fish-audio` | `apiKey` | 云端服务，按 `reference_id` 选音色 |
 | `qq-voice` | `accountId` | QQ 声聊，仅群聊，依赖 OneBot |
 
@@ -175,6 +176,27 @@ GPT-SoVITS 没有「讲者列表」接口，讲者就是一组参考音频配置
 - 老版 `api.py`（`apiVersion: v1`）的参数名是 `refer_wav_path` / `prompt_language` / `text_language` / `inp_refs` / `speed`，插件会自动映射，且 **v1 没有底模切换接口**，`gpt_weights` / `sovits_weights` 会被忽略；
 - 如果是 vits-simple-api，它自带 `/voice/speakers`，不需要手写讲者。
 
+### GSV API v1 配置
+
+GSV 工作台在 9880 暴露的 v1 公开 API（不是 `api_v2.py`）：模型、参考音频、采样参数都在工作台（9881）管理，调用方只传文本、角色和情绪。
+
+```yaml
+- type: gsv-api
+  label: 工作台
+  url: http://127.0.0.1:9880       # 公开 API；9881 是工作台，不要填
+  apiKey: ''                       # 服务端开启鉴权时填
+  authMode: bearer                 # bearer / x-api-key / both
+  format: wav                      # wav 能拼接；ogg 只能分条发
+  language: zh                     # 可选，留空按参考音频语种
+  autoPullSpeaker: true            # 从 /v1/speakers 自动拉角色
+  speakers:                        # 也可以手写（autoPullSpeaker=false）
+    - name: 银狼
+      id: yinlang                  # 必须是角色 id，显示名会 404
+      emotion: 平静                 # 可选，默认情绪
+      languages: [ZH, EN]
+```
+
+对应文档里的规则都已处理：`speaker` 只接受角色 id、`emotion`/`language`/`format` 可选、未知字段不会传、错误体 `{ error: { code, message } }` 会带进日志。
 ## 指令
 
 | 指令 | 说明 | 权限 |
@@ -237,6 +259,7 @@ GPT-SoVITS 没有「讲者列表」接口，讲者就是一组参考音频配置
 ## License
 
 [MIT](./LICENSE)
+
 
 
 
